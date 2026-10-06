@@ -1,0 +1,751 @@
+name: Bookings
+description: |-
+
+  Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+  All endpoints require authentication via Bearer token.
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/v1/bookings/hold
+    metadata:
+      custom: []
+      groupName: Bookings
+      groupDescription: |-
+
+        Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+        All endpoints require authentication via Bearer token.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Hold Seats'
+      description: |-
+        Create a 10-minute temporary seat hold. Seats are locked and released
+        automatically if not confirmed within the hold period.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      voyage_id:
+        custom: []
+        name: voyage_id
+        description: 'The voyage to hold seats on.'
+        required: true
+        example: 12
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      passengers:
+        custom: []
+        name: passengers
+        description: 'List of passengers. Must contain at least 1.'
+        required: true
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      currency:
+        custom: []
+        name: currency
+        description: 'optional Currency code.'
+        required: false
+        example: TZS
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      notes:
+        custom: []
+        name: notes
+        description: 'optional Booking notes.'
+        required: false
+        example: 'Window seat preferred'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      'passengers[].first_name':
+        custom: []
+        name: 'passengers[].first_name'
+        description: 'Passenger first name.'
+        required: true
+        example: John
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'passengers[].last_name':
+        custom: []
+        name: 'passengers[].last_name'
+        description: 'Passenger last name.'
+        required: true
+        example: Doe
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'passengers[].ferry_class_id':
+        custom: []
+        name: 'passengers[].ferry_class_id'
+        description: 'Travel class ID.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'passengers[].seat_number':
+        custom: []
+        name: 'passengers[].seat_number'
+        description: 'optional Preferred seat.'
+        required: false
+        example: A12
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      'passengers[].base_fare':
+        custom: []
+        name: 'passengers[].base_fare'
+        description: 'Ticket base fare.'
+        required: true
+        example: 35000.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'passengers[].discount_amount':
+        custom: []
+        name: 'passengers[].discount_amount'
+        description: 'optional Discount amount.'
+        required: false
+        example: 5000.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      voyage_id: 12
+      passengers:
+        - architecto
+      currency: TZS
+      notes: 'Window seat preferred'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 201
+        content: '{"success": true, "message": "Booking held successfully.", "data": {"booking_reference": "VF-20260824-ABC123", "status": "held", "expires_at": "2026-08-24T12:10:00Z", "total_amount": 35000, "currency": "TZS"}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 422
+        content: '{"success": false, "message": "Validation error", "errors": {}}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/v1/bookings/reserve
+    metadata:
+      custom: []
+      groupName: Bookings
+      groupDescription: |-
+
+        Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+        All endpoints require authentication via Bearer token.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Reserve Booking'
+      description: |-
+        Create a reservation that needs to be paid at the office counter.
+        Supports one-way and round-trip bookings with multiple passengers.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      trip_type:
+        custom: []
+        name: trip_type
+        description: 'optional Trip type: one_way or round_trip.'
+        required: false
+        example: one_way
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      voyage_id:
+        custom: []
+        name: voyage_id
+        description: 'The outbound voyage ID.'
+        required: true
+        example: 12
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      ferry_class_id:
+        custom: []
+        name: ferry_class_id
+        description: 'The travel class ID.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      return_voyage_id:
+        custom: []
+        name: return_voyage_id
+        description: 'optional Return voyage ID (required for round_trip).'
+        required: false
+        example: 15
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      return_ferry_class_id:
+        custom: []
+        name: return_ferry_class_id
+        description: 'optional Return class ID (required for round_trip).'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      passengers:
+        custom: []
+        name: passengers
+        description: 'List of passengers.'
+        required: true
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      currency:
+        custom: []
+        name: currency
+        description: 'optional Currency: TZS or USD.'
+        required: false
+        example: TZS
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      'passengers[].name':
+        custom: []
+        name: 'passengers[].name'
+        description: 'Full name.'
+        required: true
+        example: 'John Doe'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'passengers[].passenger_type_id':
+        custom: []
+        name: 'passengers[].passenger_type_id'
+        description: 'Passenger type.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'passengers[].gender':
+        custom: []
+        name: 'passengers[].gender'
+        description: 'Gender: male, female, unknown.'
+        required: true
+        example: male
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'passengers[].nationality_id':
+        custom: []
+        name: 'passengers[].nationality_id'
+        description: ''
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'passengers[].identity_type_id':
+        custom: []
+        name: 'passengers[].identity_type_id'
+        description: ''
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'passengers[].identity_number':
+        custom: []
+        name: 'passengers[].identity_number'
+        description: 'Must not be greater than 100 characters.'
+        required: false
+        example: 'n'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'passengers[].outbound_seat':
+        custom: []
+        name: 'passengers[].outbound_seat'
+        description: 'Must not be greater than 20 characters.'
+        required: false
+        example: gzmiyvdljnikhway
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'passengers[].return_seat':
+        custom: []
+        name: 'passengers[].return_seat'
+        description: 'Must not be greater than 20 characters.'
+        required: false
+        example: kcmyuwpwlvqwrsit
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'passengers[].ferry_class_id':
+        custom: []
+        name: 'passengers[].ferry_class_id'
+        description: 'backward compatibility. Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'passengers[].seat_number':
+        custom: []
+        name: 'passengers[].seat_number'
+        description: 'Must not be greater than 20 characters.'
+        required: false
+        example: ngzmiyvdljnikhwa
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      trip_type: one_way
+      voyage_id: 12
+      ferry_class_id: 1
+      return_voyage_id: 15
+      return_ferry_class_id: 1
+      passengers:
+        - architecto
+      currency: TZS
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 201
+        content: '{"success": true, "message": "Booking reserved successfully.", "data": {"booking_reference": "VF-20260824-XYZ789", "status": "reserved", "total_amount": 70000}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 422
+        content: '{"success": false, "message": "Validation error", "errors": {}}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/v1/bookings/{reference}'
+    metadata:
+      custom: []
+      groupName: Bookings
+      groupDescription: |-
+
+        Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+        All endpoints require authentication via Bearer token.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Retrieve booking summary by reference number.'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      reference:
+        custom: []
+        name: reference
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      reference: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 404
+        content: '{"success":false,"message":"Booking not found."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          x-ratelimit-limit: '120'
+          x-ratelimit-remaining: '119'
+          access-control-allow-origin: '*'
+        description: null
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/v1/bookings/{reference}/tickets'
+    metadata:
+      custom: []
+      groupName: Bookings
+      groupDescription: |-
+
+        Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+        All endpoints require authentication via Bearer token.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get tickets for a booking.'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      reference:
+        custom: []
+        name: reference
+        description: ''
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      reference: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 404
+        content: '{"success":false,"message":"Booking not found."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          x-ratelimit-limit: '120'
+          x-ratelimit-remaining: '119'
+          access-control-allow-origin: '*'
+        description: null
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/bookings/{reference}/cancel'
+    metadata:
+      custom: []
+      groupName: Bookings
+      groupDescription: |-
+
+        Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+        All endpoints require authentication via Bearer token.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Cancel Booking'
+      description: |-
+        Cancel an active booking. Applies cancellation penalty if configured.
+        For agent bookings, refund is held as a pending refund until admin release.
+        For direct bookings, refund is processed via the original payment gateway.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      reference:
+        custom: []
+        name: reference
+        description: 'The booking reference.'
+        required: true
+        example: VF-20260824-ABC123
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      reference: VF-20260824-ABC123
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      reason:
+        custom: []
+        name: reason
+        description: 'optional Cancellation reason.'
+        required: false
+        example: 'Customer requested cancellation'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      reason: 'Customer requested cancellation'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success": true, "message": "Booking cancelled successfully.", "data": {"booking_reference": "VF-20260824-ABC123", "status": "cancelled"}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 400
+        content: '{"success": false, "message": "Booking is already cancelled or expired."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 404
+        content: '{"success": false, "message": "Booking not found."}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/bookings/{reference}/pay'
+    metadata:
+      custom: []
+      groupName: Bookings
+      groupDescription: |-
+
+        Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+        All endpoints require authentication via Bearer token.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Pay for Booking'
+      description: |-
+        Initiate mobile money payment via Selcom gateway. A USSD push notification
+        is sent to the provided phone number. Poll the payment-status endpoint to check completion.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      reference:
+        custom: []
+        name: reference
+        description: 'The booking reference.'
+        required: true
+        example: VF-20260824-ABC123
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      reference: VF-20260824-ABC123
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      phone_number:
+        custom: []
+        name: phone_number
+        description: 'Mobile money number.'
+        required: true
+        example: '255712345678'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      phone_number: '255712345678'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success": true, "message": "A payment prompt has been sent to your phone. Please confirm.", "data": {"poll_url": "http://localhost:8000/api/v1/bookings/VF-20260824-ABC123/payment-status"}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 400
+        content: '{"success": false, "message": "Booking is already paid."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 404
+        content: '{"success": false, "message": "Booking not found."}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/v1/bookings/{reference}/payment-status'
+    metadata:
+      custom: []
+      groupName: Bookings
+      groupDescription: |-
+
+        Manage ferry bookings — create holds, reserve, confirm, cancel, and pay.
+        All endpoints require authentication via Bearer token.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Check Payment Status'
+      description: |-
+        Poll this endpoint after initiating payment to check if the mobile money
+        transaction has been completed.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      reference:
+        custom: []
+        name: reference
+        description: 'The booking reference.'
+        required: true
+        example: VF-20260824-ABC123
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      reference: VF-20260824-ABC123
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success": true, "data": {"payment_status": "paid", "booking_status": "confirmed"}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 200
+        content: '{"success": true, "data": {"payment_status": "pending", "booking_status": "held"}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 404
+        content: '{"success": false, "message": "Booking not found."}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null

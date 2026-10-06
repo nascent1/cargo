@@ -1,0 +1,201 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    /* ── Creative Azure Blue Brand Palette ── */
+    --color-brand-50: #e8edf5;
+    --color-brand-100: #c5d1e6;
+    --color-brand-200: #9eb2d4;
+    --color-brand-300: #7793c2;
+    --color-brand-400: #587bb4;
+    --color-brand-500: #3b64a5;
+    --color-brand-600: #2e5090;
+    --color-brand-700: #1d3d72;
+    --color-brand-800: #152d56;
+    --color-brand-900: #0e1f3d;
+    --color-brand-950: #081427;
+
+    /* ── Ocean & Deep Blue Palette ── */
+    --color-ocean-50: #f1f8f9;
+    --color-ocean-100: #ddefef;
+    --color-ocean-200: #bedee0;
+    --color-ocean-300: #90c7cb;
+    --color-ocean-400: #5fa8ae;
+    --color-ocean-500: #22a699;
+    --color-ocean-600: #1c8880;
+    --color-ocean-700: #1a5f7a;
+    --color-ocean-800: #164f66;
+    --color-ocean-900: #0f2537;
+
+    /* Force all primary/secondary theme colors to blue scale */
+    --color-amber-50: var(--color-brand-50);
+    --color-amber-100: var(--color-brand-100);
+    --color-amber-200: var(--color-brand-200);
+    --color-amber-300: var(--color-brand-300);
+    --color-amber-400: var(--color-brand-400);
+    --color-amber-500: var(--color-brand-500);
+    --color-amber-600: var(--color-brand-600);
+    --color-amber-700: var(--color-brand-700);
+    --color-amber-800: var(--color-brand-800);
+    --color-amber-900: var(--color-brand-900);
+    --color-amber-950: var(--color-brand-950);
+
+    --color-cyan-50: var(--color-brand-50);
+    --color-cyan-100: var(--color-brand-100);
+    --color-cyan-200: var(--color-brand-200);
+    --color-cyan-300: var(--color-brand-300);
+    --color-cyan-400: var(--color-brand-400);
+    --color-cyan-500: var(--color-brand-500);
+    --color-cyan-600: var(--color-brand-600);
+    --color-cyan-700: var(--color-brand-700);
+    --color-cyan-800: var(--color-brand-800);
+    --color-cyan-900: var(--color-brand-900);
+    --color-cyan-950: var(--color-brand-950);
+
+    --color-teal-50: var(--color-brand-50);
+    --color-teal-100: var(--color-brand-100);
+    --color-teal-200: var(--color-brand-200);
+    --color-teal-300: var(--color-brand-300);
+    --color-teal-400: var(--color-brand-400);
+    --color-teal-500: var(--color-brand-500);
+    --color-teal-600: var(--color-brand-600);
+    --color-teal-700: var(--color-brand-700);
+    --color-teal-800: var(--color-brand-800);
+    --color-teal-900: var(--color-brand-900);
+    --color-teal-950: var(--color-brand-950);
+
+    --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+@layer base {
+  /* --------------------------------------------------------------------------
+     iOS & macOS Safari Compatibility Fixes for Form Elements
+     -------------------------------------------------------------------------- */
+  
+  /* Prevent iOS zoom on focus & enforce comfortable 44px box model globally to prevent letter clipping */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Remove default Apple native styling & enforce comfortable height/padding/line-height */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  textarea,
+  select {
+    box-sizing: border-box;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    min-height: 2.75rem; /* 44px minimum touch target & breathing room */
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  /* Fix Date Inputs alignment and layout on iOS */
+  input[type="date"] {
+    min-height: 2.5rem; /* Ensure minimum height for touch target */
+    display: flex;
+    align-items: center;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    height: 1.5em; /* Fix text cutoff */
+  }
+
+  /* Restore dropdown arrow for select elements since appearance:none hides it */
+  select:not([multiple]):not([size]) {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+    padding-right: 2.5rem;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@layer utilities {
+  /* ── Portal Micro-Animations ── */
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 100, 165, 0.3); }
+    50% { box-shadow: 0 0 16px 4px rgba(59, 100, 165, 0.15); }
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .animate-fade-slide-up {
+    animation: fadeSlideUp 0.35s ease-out both;
+  }
+  .animate-fade-slide-down {
+    animation: fadeSlideDown 0.25s ease-out both;
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.04) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+  .animate-pulse-glow {
+    animation: pulseGlow 2.5s ease-in-out infinite;
+  }
+  .animate-breathe {
+    animation: breathe 3s ease-in-out infinite;
+  }
+
+  /* ── Glassmorphism utilities ── */
+  .glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  }
+  .glass-light {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* ── Card hover lift ── */
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(59, 100, 165, 0.1);
+  }
+
+  /* ── Gradient accent border ── */
+  .border-gradient-brand {
+    border-image: linear-gradient(135deg, #3b64a5, #2e5090) 1;
+  }
+}

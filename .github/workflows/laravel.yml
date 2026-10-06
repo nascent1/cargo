@@ -1,0 +1,96 @@
+name: Laravel CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  lint:
+    name: PHP Lint Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+    - name: PHP syntax check
+      run: find app config database routes -name '*.php' -exec php -l {} \; | grep -v "No syntax errors"
+
+  laravel-tests:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ferry_user
+          POSTGRES_PASSWORD: secretpassword
+          POSTGRES_DB: ferry_booking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: ferry_booking_test
+      DB_USERNAME: ferry_user
+      DB_PASSWORD: secretpassword
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: pdo_pgsql, pgsql, bcmath, mbstring
+        coverage: xdebug
+
+    - name: Get Composer cache directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache Composer dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+
+    - name: Install Dependencies
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Copy .env
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+    - name: Generate key
+      run: php artisan key:generate
+
+    - name: Setup Database
+      run: |
+        php artisan migrate --force
+        php artisan db:seed --class=RbacSeeder --force
+        php artisan db:seed --class=SystemConfigSeeder --force
+
+    - name: Execute tests with coverage
+      run: |
+        php artisan test --parallel --coverage-text 2>&1 | tee test-output.txt
+        echo ""
+        echo "=== Coverage Summary ==="
+        grep -A 5 "Code Coverage Report" test-output.txt || true
+
+    - name: Upload test results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-output
+        path: test-output.txt

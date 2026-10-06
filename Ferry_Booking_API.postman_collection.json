@@ -1,0 +1,440 @@
+{
+  "info": {
+    "name": "Ferry Booking Platform (Scanner, Mobile, Web)",
+    "description": "API endpoints for Port Scanner Devices, Mobile App, and Public Web Booking.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Scanner API",
+      "description": "Endpoints for port operators using handheld scanner devices.",
+      "item": [
+        {
+          "name": "1. Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operator_no\": \"1234\",\n  \"pin\": \"5678\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/scanner/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "scanner", "login"]
+            }
+          }
+        },
+        {
+          "name": "2. Fetch Voyage Tickets (Manifest)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{scanner_token}}", "type": "string" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/scanner/voyages/10/tickets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "scanner", "voyages", "10", "tickets"]
+            }
+          }
+        },
+        {
+          "name": "3. Verify Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{scanner_token}}", "type": "string" }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"voyage_id\": 10,\n  \"ticket_number\": \"VFF-123456789012-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/scanner/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "scanner", "verify"]
+            }
+          }
+        },
+        {
+          "name": "4. Board Passenger",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{scanner_token}}", "type": "string" }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"voyage_id\": 10,\n  \"qr_data\": \"VFF-123456789012:ITEM-45\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/scanner/board",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "scanner", "board"]
+            }
+          }
+        },
+        {
+          "name": "5. Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{scanner_token}}", "type": "string" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/scanner/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "scanner", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mobile App API",
+      "description": "Endpoints for Android and iOS customer applications.",
+      "item": [
+        {
+          "name": "1. Splash (Bootstrap Data)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/splash",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "splash"]
+            }
+          }
+        },
+        {
+          "name": "2. Search Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/search?departure_port=1&arrival_port=2&date=2026-08-04&passengers=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "search"],
+              "query": [
+                { "key": "departure_port", "value": "1" },
+                { "key": "arrival_port", "value": "2" },
+                { "key": "date", "value": "2026-08-04" },
+                { "key": "passengers", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Seat Layout",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/seat-layout?voyage_id=10&class_id=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "seat-layout"],
+              "query": [
+                { "key": "voyage_id", "value": "10" },
+                { "key": "class_id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Reserve Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"voyage_id\": 10,\n  \"currency\": \"TZS\",\n  \"device_token\": \"fcm-token-for-push-notifications\",\n  \"passengers\": [\n    {\n      \"name\": \"John Doe\",\n      \"passenger_type_id\": 1,\n      \"gender\": \"male\",\n      \"nationality_id\": 1,\n      \"identity_type_id\": 1,\n      \"identity_number\": \"T12345678\",\n      \"ferry_class_id\": 1,\n      \"seat_number\": \"A12\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/reserve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "reserve"]
+            }
+          }
+        },
+        {
+          "name": "5. Retrieve Booking Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/bookings/{{booking_ref}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "bookings", "{{booking_ref}}"]
+            }
+          }
+        },
+        {
+          "name": "6. Cancel Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/bookings/{{booking_ref}}/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "bookings", "{{booking_ref}}", "cancel"]
+            }
+          }
+        },
+        {
+          "name": "7. Initiate Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"0700000000\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/bookings/{{booking_ref}}/pay",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "bookings", "{{booking_ref}}", "pay"]
+            }
+          }
+        },
+        {
+          "name": "8. Poll Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mobile/bookings/{{booking_ref}}/payment-status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mobile", "bookings", "{{booking_ref}}", "payment-status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public Web Booking API",
+      "description": "Endpoints for the customer-facing website.",
+      "item": [
+        {
+          "name": "1. Availability Search",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/availability?departure_port=1&arrival_port=2&date=2026-08-04&passengers_count=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "availability"],
+              "query": [
+                { "key": "departure_port", "value": "1" },
+                { "key": "arrival_port", "value": "2" },
+                { "key": "date", "value": "2026-08-04" },
+                { "key": "passengers_count", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Seat Layout",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/seat-layout?voyage_id=10&class_id=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "seat-layout"],
+              "query": [
+                { "key": "voyage_id", "value": "10" },
+                { "key": "class_id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Reserve Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"voyage_id\": 10,\n  \"currency\": \"TZS\",\n  \"passengers\": [\n    {\n      \"name\": \"Jane Smith\",\n      \"passenger_type_id\": 1,\n      \"gender\": \"female\",\n      \"nationality_id\": 1,\n      \"identity_type_id\": 1,\n      \"identity_number\": \"T87654321\",\n      \"ferry_class_id\": 1,\n      \"seat_number\": \"B12\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/bookings/reserve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "bookings", "reserve"]
+            }
+          }
+        },
+        {
+          "name": "4. Retrieve Booking Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/bookings/{{booking_ref}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "bookings", "{{booking_ref}}"]
+            }
+          }
+        },
+        {
+          "name": "5. Retrieve Booking Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/bookings/{{booking_ref}}/tickets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "bookings", "{{booking_ref}}", "tickets"]
+            }
+          }
+        },
+        {
+          "name": "6. Cancel Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/bookings/{{booking_ref}}/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "bookings", "{{booking_ref}}", "cancel"]
+            }
+          }
+        },
+        {
+          "name": "7. Initiate Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"0700000000\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/bookings/{{booking_ref}}/pay",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "bookings", "{{booking_ref}}", "pay"]
+            }
+          }
+        },
+        {
+          "name": "8. Poll Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/bookings/{{booking_ref}}/payment-status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "bookings", "{{booking_ref}}", "payment-status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Webhooks",
+      "description": "Endpoints hit asynchronously by Selcom.",
+      "item": [
+        {
+          "name": "Selcom Callback",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Digest", "value": "SHA-256=MOCKED_DIGEST_STRING" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"{{booking_ref}}\",\n  \"payment_status\": \"COMPLETED\",\n  \"amount\": 35000,\n  \"reference\": \"SELCOM-REF-999\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/webhooks/selcom/callback",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "webhooks", "selcom", "callback"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "scanner_token",
+      "value": "YOUR_SANCTUM_TOKEN_HERE"
+    },
+    {
+      "key": "booking_ref",
+      "value": "VFF-123456789012"
+    }
+  ]
+}

@@ -1,0 +1,1105 @@
+name: 'Sales Portal'
+description: |-
+
+  Booking management endpoints for the sales portal (agents, counter staff, and associates).
+  All endpoints are data-scoped — agents see only their own bookings and their associates'.
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/v1/portal/bookings
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List Bookings'
+      description: |-
+        List bookings scoped to the current user's permissions.
+        Supports search by reference, passenger name, or phone.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      search:
+        custom: []
+        name: search
+        description: 'Search by reference, passenger name, or phone.'
+        required: false
+        example: VF-2026
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      status:
+        custom: []
+        name: status
+        description: 'Filter by booking status.'
+        required: false
+        example: confirmed
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      date:
+        custom: []
+        name: date
+        description: 'Filter by travel date.'
+        required: false
+        example: '2026-08-24'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Results per page.'
+        required: false
+        example: 20
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      search: VF-2026
+      status: confirmed
+      date: '2026-08-24'
+      per_page: 20
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"status": "success", "data": [{"id": 1, "booking_reference": "VF-20260824-ABC123", "status": "confirmed"}]}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/v1/portal/bookings/availability/check
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      date:
+        custom: []
+        name: date
+        description: 'Must be a valid date.'
+        required: false
+        example: '2026-08-24T11:56:20'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      route_id:
+        custom: []
+        name: route_id
+        description: ''
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      current_class_id:
+        custom: []
+        name: current_class_id
+        description: ''
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      date: '2026-08-24T11:56:20'
+      route_id: 16
+      current_class_id: 16
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: '*'
+        description: null
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/v1/portal/bookings/availability/lock
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      voyage_id:
+        custom: []
+        name: voyage_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      ferry_class_id:
+        custom: []
+        name: ferry_class_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      quantity:
+        custom: []
+        name: quantity
+        description: 'Must be at least 1. Must not be greater than 50.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      voyage_id: architecto
+      ferry_class_id: architecto
+      quantity: 22
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/v1/portal/bookings/availability/unlock
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/v1/portal/bookings/{id}'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Show booking details.'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: '*'
+        description: null
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/portal/bookings/{id}/complete'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PUT
+    uri: 'api/v1/portal/bookings/{id}'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/portal/bookings/{id}/cancel'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Cancel Booking'
+      description: |-
+        Cancel an entire booking. Applies cancellation penalty if configured.
+        For agent bookings, refund is queued as a pending refund.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'Booking ID or reference.'
+        required: true
+        example: '42'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: '42'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      reason:
+        custom: []
+        name: reason
+        description: 'optional Cancellation reason.'
+        required: false
+        example: 'Customer no-show'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      reason: 'Customer no-show'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"status": "success", "message": "Booking cancelled and seats released successfully."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 404
+        content: '{"status": "error", "message": "Not found"}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 422
+        content: '{"status": "error", "message": "Cannot cancel: booking is already cancelled."}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/portal/bookings/{id}/tickets/batch-reschedule'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      tickets:
+        custom: []
+        name: tickets
+        description: 'Must have at least 1 items.'
+        required: true
+        example:
+          - []
+        type: 'object[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'tickets[].ticket_id':
+        custom: []
+        name: 'tickets[].ticket_id'
+        description: 'Must match an existing stored value.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'tickets[].voyage_id':
+        custom: []
+        name: 'tickets[].voyage_id'
+        description: 'Must match an existing stored value.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'tickets[].ferry_class_id':
+        custom: []
+        name: 'tickets[].ferry_class_id'
+        description: 'Must match an existing stored value.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'tickets[].passenger_name':
+        custom: []
+        name: 'tickets[].passenger_name'
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: 'n'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'tickets[].lock_id':
+        custom: []
+        name: 'tickets[].lock_id'
+        description: ''
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      tickets:
+        -
+          ticket_id: architecto
+          voyage_id: architecto
+          ferry_class_id: architecto
+          passenger_name: 'n'
+          lock_id: 16
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/portal/bookings/{id}/tickets/{itemId}/cancel'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Cancel Single Ticket'
+      description: |-
+        Cancel an individual ticket within a booking. The "Last Adult Safeguard"
+        prevents cancelling the sole remaining adult ticket when minors are present.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'Booking ID or reference.'
+        required: true
+        example: '42'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      itemId:
+        custom: []
+        name: itemId
+        description: 'Ticket ID.'
+        required: true
+        example: 105
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: '42'
+      itemId: 105
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      reason:
+        custom: []
+        name: reason
+        description: 'optional Cancellation reason.'
+        required: false
+        example: 'Passenger withdrew'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      reason: 'Passenger withdrew'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"status": "success", "message": "Ticket TK-001 cancelled successfully."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 422
+        content: '{"status": "error", "message": "Last Adult Safeguard: Cannot cancel the sole remaining Adult ticket when minors are present."}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PUT
+    uri: 'api/v1/portal/bookings/{id}/tickets/{itemId}/passenger'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      itemId:
+        custom: []
+        name: itemId
+        description: ''
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+      itemId: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      full_name:
+        custom: []
+        name: full_name
+        description: 'Must not be greater than 255 characters.'
+        required: true
+        example: b
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      id_number:
+        custom: []
+        name: id_number
+        description: 'Must not be greater than 100 characters.'
+        required: false
+        example: 'n'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      gender:
+        custom: []
+        name: gender
+        description: ''
+        required: false
+        example: female
+        type: string
+        enumValues:
+          - male
+          - female
+          - other
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      dob:
+        custom: []
+        name: dob
+        description: 'Must be a valid date.'
+        required: false
+        example: '2026-08-24T11:56:20'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      full_name: b
+      id_number: 'n'
+      gender: female
+      dob: '2026-08-24T11:56:20'
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/portal/bookings/{id}/tickets/{itemId}/reschedule'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Reschedule Ticket'
+      description: |-
+        Move a ticket to a different voyage and/or class. May split into a new booking
+        if the vessel changes. Fare difference is charged or refunded based on config.
+      authenticated: true
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'Booking ID or reference.'
+        required: true
+        example: '42'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      itemId:
+        custom: []
+        name: itemId
+        description: 'Ticket ID.'
+        required: true
+        example: 105
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: '42'
+      itemId: 105
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      voyage_id:
+        custom: []
+        name: voyage_id
+        description: 'Target voyage ID.'
+        required: true
+        example: 15
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      ferry_class_id:
+        custom: []
+        name: ferry_class_id
+        description: 'Target class ID.'
+        required: true
+        example: 2
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      passenger_name:
+        custom: []
+        name: passenger_name
+        description: 'optional Updated passenger name.'
+        required: false
+        example: 'Jane Doe'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      lock_id:
+        custom: []
+        name: lock_id
+        description: 'optional Seat lock ID to release.'
+        required: false
+        example: 3
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      voyage_id: 15
+      ferry_class_id: 2
+      passenger_name: 'Jane Doe'
+      lock_id: 3
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"status": "success", "message": "Ticket rescheduled successfully.", "data": {"ticket_number": "TK-002"}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 422
+        content: '{"status": "error", "message": "Cannot reschedule: ticket is departed."}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/v1/portal/bookings/{id}/print'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: '*'
+        description: null
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/v1/portal/bookings/{id}/tickets/{itemId}/print'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      itemId:
+        custom: []
+        name: itemId
+        description: ''
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+      itemId: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: '*'
+        description: null
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/v1/portal/bookings/{id}/email'
+    metadata:
+      custom: []
+      groupName: 'Sales Portal'
+      groupDescription: |-
+
+        Booking management endpoints for the sales portal (agents, counter staff, and associates).
+        All endpoints are data-scoped — agents see only their own bookings and their associates'.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the booking.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
