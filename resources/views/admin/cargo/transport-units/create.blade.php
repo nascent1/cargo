@@ -67,9 +67,11 @@
                 </select>
             </div>
 
+            <x-dual-control.takes-effect op="cargo_transport_unit_create" />
+
             <div class="pt-6 flex justify-end gap-3">
                 <a href="{{ route('admin.cargo.transport-units.index') }}" class="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancel</a>
-                <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-colors">Submit for Approval</button>
+                <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-colors">Save</button>
             </div>
         </form>
     </div>

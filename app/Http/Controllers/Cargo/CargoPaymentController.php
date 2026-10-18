@@ -8,6 +8,8 @@ use App\Models\CargoPayment;
 use App\Models\Consignment;
 use App\Models\PaymentMethod;
 use App\Services\Cargo\CargoPaymentService;
+use App\Services\DualControl\DualControlException;
+use App\Services\DualControlService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -86,11 +88,27 @@ class CargoPaymentController extends Controller
             'payer_msisdn' => 'nullable|string|max:20',
         ]);
 
-        return $this->attempt(function () use ($request, $cargoPayment) {
-            $this->payments->confirmManual($cargoPayment, $request->reference, $request->payer_msisdn, $request->user());
+        // Through dual control (cargo_payment_manual_confirm): applied straight away when the rule is off,
+        // otherwise a checker confirms it and the payment stays open meanwhile (202 + message).
+        $dualControl = app(DualControlService::class);
+        try {
+            $dcRequest = $dualControl->submit('cargo_payment_manual_confirm', 'cargo_payment', $cargoPayment->id, [
+                'before' => ['status' => $cargoPayment->status, 'amount' => (float) $cargoPayment->amount],
+                'after' => [
+                    'reference' => $request->reference,
+                    'payer_msisdn' => $request->payer_msisdn,
+                    'booking' => $cargoPayment->consignment?->consignment_number,
+                ],
+            ]);
+        } catch (CargoPaymentException|DualControlException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
 
-            return $cargoPayment->fresh()->toApi();
-        });
+        if ($dcRequest->status !== 'approved') {
+            return response()->json(['pending' => true, 'request_id' => $dcRequest->id, 'message' => $dualControl->outcomeMessage($dcRequest, '')], 202);
+        }
+
+        return response()->json($cargoPayment->fresh()->toApi());
     }
 
     public function smsInstructions(Request $request, CargoPayment $cargoPayment)

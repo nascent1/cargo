@@ -17,6 +17,13 @@ class TransportService extends Model
         'service_number',
         'status',
         'weather_notes',
+        'actual_departure_at',
+        'actual_arrival_at',
+    ];
+
+    protected $casts = [
+        'actual_departure_at' => 'datetime',
+        'actual_arrival_at' => 'datetime',
     ];
 
     public function schedule()
@@ -50,11 +57,14 @@ class TransportService extends Model
     }
 
     /**
-     * Scope to filter out expired schedules.
+     * Departures that can still take bookings: not sailed or cancelled, on an active route,
+     * and not on a vessel that is inactive or in maintenance.
      */
     public function scopeAvailableForBooking($query)
     {
         return $query->whereNotIn('status', ['cancelled', 'departed', 'arrived'])
+            ->whereHas('route', fn ($q) => $q->where('status', 'active'))
+            ->whereDoesntHave('transportUnit', fn ($q) => $q->where('status', '!=', 'active'))
             ->where(function ($q) {
                 $q->where('departure_date', '>', now()->toDateString())
                   ->orWhere(function ($q2) {

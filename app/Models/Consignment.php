@@ -28,6 +28,9 @@ class Consignment extends Model
         'delivered_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'paid_at' => 'datetime',
+        'left_behind_at' => 'datetime',
+        'collected_phone_verified' => 'boolean',
+        'collection_warnings' => 'array',
     ];
 
     public function items()
@@ -111,6 +114,18 @@ class Consignment extends Model
         }
 
         return $this->paymentChannel?->name ?? \Illuminate\Support\Str::headline($this->payment_method);
+    }
+
+    /** Staff member who handed the cargo over to its collector. */
+    public function handedOverBy()
+    {
+        return $this->belongsTo(User::class, 'handed_over_by');
+    }
+
+    /** Paid, but not loaded when its vessel departed (vessel full or missed). */
+    public function isLeftBehind(): bool
+    {
+        return $this->left_behind_at !== null && $this->status === 'booked';
     }
 
     public function isCancellable(): bool

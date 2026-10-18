@@ -440,8 +440,8 @@ class CargoPaymentService
 
             $this->receiptSvc->generateReceipt($consignment->fresh(['items.cargoType']), $actorId);
 
-            $paymentId = $p->id;
-            DB::afterCommit(fn () => $this->notifySender($consignment->fresh(), CargoPayment::find($paymentId)));
+            // Booking details to the sender and the receiver, once the payment is committed (SMS policy)
+            DB::afterCommit(fn () => app(\App\Services\SmsNotifier::class)->bookingConfirmed($consignment->fresh()));
         });
 
         $payment->refresh();
@@ -637,30 +637,6 @@ class CargoPaymentService
 
         if ($duplicate) {
             throw new CargoPaymentException("Reference {$ref} was already used for booking {$duplicate->consignment?->consignment_number}. Check the SMS again.");
-        }
-    }
-
-    private function notifySender(Consignment $consignment, ?CargoPayment $payment): void
-    {
-        if (SystemConfig::getValue('cargo_payment_sms_enabled', '1') !== '1' || !$consignment->sender_phone || !$payment) {
-            return;
-        }
-
-        try {
-            $company = SystemConfig::getValue('company_name', config('app.name'));
-            app(SmsService::class)->sendSms(
-                Msisdn::normalize($consignment->sender_phone) ?? $consignment->sender_phone,
-                sprintf(
-                    'Payment of %s %s received for cargo %s (ref %s). Asante — %s.',
-                    $payment->currency,
-                    number_format((float) $payment->amount),
-                    $consignment->consignment_number,
-                    $consignment->payment_reference,
-                    $company,
-                ),
-            );
-        } catch (\Throwable $e) {
-            Log::warning("Payment SMS for {$consignment->consignment_number} failed: {$e->getMessage()}");
         }
     }
 }

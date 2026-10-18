@@ -17,8 +17,9 @@ class MenuSeeder extends Seeder
 
         // 1. Main Navigation
         $mainMenu = [
-            ['title' => 'Dashboard', 'route' => 'admin.dashboard', 'icon' => 'fa-chart-pie', 'permission_name' => null, 'section' => 'main'],
+            ['title' => 'Dashboard', 'route' => 'admin.cargo.dashboard', 'icon' => 'fa-chart-pie', 'permission_name' => null, 'section' => 'main'],
             ['title' => 'Dual Control Inbox', 'route' => 'admin.dual-control.index', 'icon' => 'fa-check-double', 'permission_name' => 'dc:list', 'section' => 'main'],
+            ['title' => 'Reports', 'route' => 'admin.reports.index', 'icon' => 'fa-chart-line', 'permission_name' => 'cargo-report', 'section' => 'main'],
         ];
 
         foreach ($mainMenu as $index => $item) {
@@ -36,7 +37,7 @@ class MenuSeeder extends Seeder
         ]);
 
         $opsItems = [
-            ['title' => 'Cargo Booking', 'route' => 'admin.cargo.booking', 'icon' => 'fa-ticket-alt', 'permission_name' => 'cargo-create'],
+            ['title' => 'Cargo Booking', 'route' => 'admin.cargo.booking', 'icon' => 'fa-ticket-alt', 'permission_name' => 'cargo-book'],
             ['title' => 'Consignments', 'route' => 'admin.cargo.consignments', 'icon' => 'fa-box', 'permission_name' => 'cargo-view'],
             ['title' => 'Loading Manifests', 'route' => 'admin.cargo.manifest', 'icon' => 'fa-clipboard-list', 'permission_name' => 'cargo-manifest'],
             ['title' => 'Cargo Types', 'route' => 'admin.cargo.types', 'icon' => 'fa-tags', 'permission_name' => 'cargo-manage-types'],

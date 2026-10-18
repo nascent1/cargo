@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cargo\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\Station;
 use App\Services\DualControlService;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class StationController extends Controller
 {
+    use SubmitsDualControl;
+
     public function index(Request $request)
     {
         $query = Station::latest();
@@ -43,9 +46,8 @@ class StationController extends Controller
             'city' => 'nullable|string|max:100',
         ]);
 
-        $dcService->submit('station_create', 'station', 0, ['after' => $validated]);
-
-        return redirect()->route('admin.cargo.stations.index')->with('success', 'Station creation submitted successfully.');
+        return $this->submitChange($request, 'station_create', 'station', 0, ['after' => $validated],
+            'Station created.', route('admin.cargo.stations.index'));
     }
 
     public function show(string $id)
@@ -72,12 +74,8 @@ class StationController extends Controller
         $payloadBefore = $station->toArray();
         $payloadAfter = array_merge($station->toArray(), $validated);
 
-        $dcService->submit('station_update', 'station', $station->id, [
-            'before' => $payloadBefore,
-            'after' => $payloadAfter,
-        ]);
-
-        return redirect()->route('admin.cargo.stations.index')->with('success', 'Station update submitted successfully.');
+        return $this->submitChange($request, 'station_update', 'station', $station->id,
+            ['before' => $payloadBefore, 'after' => $payloadAfter], 'Station updated.', route('admin.cargo.stations.index'));
     }
 
     public function updateStatus(Request $request, DualControlService $dcService, string $id)
@@ -91,12 +89,7 @@ class StationController extends Controller
         $payloadBefore = $station->toArray();
         $payloadAfter = array_merge($station->toArray(), ['status' => $validated['status']]);
 
-        $dcService->submit('station_status_update', 'station', $station->id, [
-            'before' => $payloadBefore,
-            'after' => $payloadAfter,
-        ]);
-
-        $action = $validated['status'] === 'active' ? 'activation' : 'suspension';
-        return redirect()->back()->with('success', "Station {$action} submitted successfully.");
+        return $this->submitChange($request, 'station_status_update', 'station', $station->id,
+            ['before' => $payloadBefore, 'after' => $payloadAfter], $validated['status'] === 'active' ? 'Station activated.' : 'Station suspended.');
     }
 }

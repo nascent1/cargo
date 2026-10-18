@@ -30,6 +30,10 @@ class CargoTrackingService
 
             // Create event for all items associated (unless item level tracking is overriding)
             foreach ($consignment->items as $item) {
+                // A cancelled line stays cancelled whatever happens to the rest of the booking
+                if ($item->status === 'cancelled' && $status !== 'cancelled') {
+                    continue;
+                }
                 TrackingEvent::create([
                     'consignment_id' => $consignment->id,
                     'cargo_item_id' => $item->id,
@@ -43,6 +47,11 @@ class CargoTrackingService
 
                 // Update item status
                 $item->status = $status;
+                if ($status === 'loaded') {
+                    $item->loaded_at ??= now();
+                } elseif ($status === 'collected') {
+                    $item->collected_at ??= now();
+                }
                 $item->save();
             }
 

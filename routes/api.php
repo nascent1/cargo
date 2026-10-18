@@ -17,7 +17,9 @@ Route::post('v1/payments/callback/{driver}', \App\Http\Controllers\Cargo\Payment
     ->name('payments.callback');
 
 Route::prefix('v1/cargo')->group(function () {
-    Route::get('track/{consignment_number}', [\App\Http\Controllers\Cargo\TrackingController::class, 'track']);
+    // Public-safe fields only; rate limited so booking numbers can't be guessed in bulk
+    Route::get('track/{consignment_number}', [\App\Http\Controllers\Cargo\TrackingController::class, 'track'])
+        ->middleware('throttle:30,1')->name('api.tracking');
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -42,7 +44,8 @@ Route::prefix('v1/portal/cargo')->middleware(['auth:sanctum', 'throttle:90,1'])-
 // ═══════════════════════════════════════════════════════════
 // SCANNER API (Mobile Devices at Port)
 // ═══════════════════════════════════════════════════════════
-Route::prefix('v1/scanner/cargo')->middleware(['auth:sanctum', 'throttle:90,1'])->group(function () {
+// Port staff only (the scanner used to accept any signed-in API user)
+Route::prefix('v1/scanner/cargo')->middleware(['auth:sanctum', 'throttle:90,1', 'permission:cargo-manifest|cargo-load|cargo-offload|cargo-collect'])->group(function () {
     Route::post('scan', [\App\Http\Controllers\Cargo\Scanner\ScannerCargoController::class, 'scan']);
     Route::post('status/update', [\App\Http\Controllers\Cargo\Scanner\ScannerCargoController::class, 'updateStatus']);
     Route::get('manifest/{transportServiceId}', [\App\Http\Controllers\Cargo\Scanner\ScannerCargoController::class, 'getManifest']);
@@ -57,15 +60,16 @@ Route::prefix('v1/admin/cargo')->middleware(['auth:sanctum', 'throttle:90,1'])->
     Route::get('consignments/{consignment}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'showConsignment']);
 
     // Cargo Types CRUD
-    Route::get('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'getCargoTypes']);
-    Route::post('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'storeCargoType']);
-    Route::put('types/{cargoType}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'updateCargoType']);
+    Route::get('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'getCargoTypes'])->middleware('permission:cargo-view|cargo-manage-types|cargo-manage-fares');
+    Route::post('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'storeCargoType'])->middleware('permission:cargo-manage-types');
+    Route::put('types/{cargoType}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'updateCargoType'])->middleware('permission:cargo-manage-types');
 
     // Cargo Fares CRUD
-    Route::get('fares', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'getCargoFares']);
-    Route::post('fares', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'storeCargoFare']);
-    Route::put('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'updateCargoFare']);
-    Route::delete('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'destroyCargoFare']);
+    // Same rules as the admin screens: permission-checked, and every change goes through preview + dual control
+    Route::get('fares', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'index'])->middleware('permission:cargo-manage-fares|cargo-manage-types');
+    Route::post('fares', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'store'])->middleware('permission:cargo-manage-fares');
+    Route::put('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'revise'])->middleware('permission:cargo-manage-fares');
+    Route::delete('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'destroy'])->middleware('permission:cargo-manage-fares');
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -78,17 +82,18 @@ Route::prefix('v1/admin/cargo')->middleware(['web', 'auth', 'throttle:90,1'])->g
     Route::get('consignments/{consignment}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'showConsignment']);
 
     // Cargo Types CRUD
-    Route::get('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'getCargoTypes']);
-    Route::post('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'storeCargoType']);
-    Route::put('types/{cargoType}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'updateCargoType']);
-    Route::delete('types/{cargoType}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'destroyCargoType']);
+    Route::get('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'getCargoTypes'])->middleware('permission:cargo-view|cargo-manage-types|cargo-manage-fares');
+    Route::post('types', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'storeCargoType'])->middleware('permission:cargo-manage-types');
+    Route::put('types/{cargoType}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'updateCargoType'])->middleware('permission:cargo-manage-types');
+    Route::delete('types/{cargoType}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'destroyCargoType'])->middleware('permission:cargo-manage-types');
 
 
     // Cargo Fares CRUD
-    Route::get('fares', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'getCargoFares']);
-    Route::post('fares', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'storeCargoFare']);
-    Route::put('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'updateCargoFare']);
-    Route::delete('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\AdminCargoController::class, 'destroyCargoFare']);
+    // Same rules as the admin screens: permission-checked, and every change goes through preview + dual control
+    Route::get('fares', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'index'])->middleware('permission:cargo-manage-fares|cargo-manage-types');
+    Route::post('fares', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'store'])->middleware('permission:cargo-manage-fares');
+    Route::put('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'revise'])->middleware('permission:cargo-manage-fares');
+    Route::delete('fares/{cargoFare}', [\App\Http\Controllers\Cargo\Admin\CargoFareController::class, 'destroy'])->middleware('permission:cargo-manage-fares');
 
     // Manifest (scanner endpoint re-exposed for admin Blade)
     Route::get('manifest/{transportServiceId}', [\App\Http\Controllers\Cargo\Scanner\ScannerCargoController::class, 'getManifest']);

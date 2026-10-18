@@ -22,6 +22,13 @@ class CargoItem extends Model
         'declared_value' => 'decimal:2',
         'base_fare' => 'decimal:2',
         'surcharge_amount' => 'decimal:2',
+        'value_charge' => 'decimal:2',
+        'value_charge_pct' => 'decimal:2',
+        'unit_rate' => 'decimal:4',
+        'min_charge' => 'decimal:2',
+        'priced_at' => 'datetime',
+        'fare_version' => 'integer',
+        'pricing_snapshot' => 'array',
         'discount_amount' => 'decimal:2',
         'final_fare' => 'decimal:2',
         'accepted_at' => 'datetime',
@@ -42,9 +49,13 @@ class CargoItem extends Model
         return $this->belongsTo(CargoType::class);
     }
 
+    /**
+     * The fare version used — for tracing only. The amounts charged live on the line itself
+     * (unit_rate, value_charge_pct, min_charge, pricing_snapshot); never re-read prices from the fare.
+     */
     public function fare()
     {
-        return $this->belongsTo(CargoFare::class, 'fare_id');
+        return $this->belongsTo(CargoFare::class, 'fare_id')->withTrashed();
     }
 
     public function trackingEvents()

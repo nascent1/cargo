@@ -33,7 +33,8 @@ class AuditLog extends Model
     {
         if (!$data) return null;
         
-        $sensitiveKeys = ['password', 'password_confirmation', 'plain_password', 'token', 'pin', 'secret'];
+        $sensitiveKeys = ['password', 'password_confirmation', 'plain_password', 'token', 'pin', 'secret',
+            'api_key', 'api_secret', 'access_token', 'passkey', 'extra_credentials', 'temporary_password'];
         
         foreach ($data as $key => $value) {
             if (in_array(strtolower($key), $sensitiveKeys)) {

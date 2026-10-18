@@ -153,32 +153,21 @@ class DemoCargoSeeder extends Seeder
             );
         }
 
-        // 5. Cargo Fares
+        // 5. Cargo Fares — fares are versions; only add one where no current or scheduled fare exists (starts now)
         $types = CargoType::all();
         foreach ($types as $type) {
-            CargoFare::firstOrCreate(
-                [
-                    'route_id' => $routeDarZnz->id,
-                    'cargo_type_id' => $type->id,
-                ],
-                [
-                    'price_tzs' => 50000,
-                    'price_usd' => 20,
-                    'status' => 'active'
-                ]
-            );
-            
-            CargoFare::firstOrCreate(
-                [
-                    'route_id' => $routeDarMaf->id,
-                    'cargo_type_id' => $type->id,
-                ],
-                [
-                    'price_tzs' => 60000,
-                    'price_usd' => 25,
-                    'status' => 'active'
-                ]
-            );
+            foreach ([[$routeDarZnz, 50000, 20], [$routeDarMaf, 60000, 25]] as [$route, $tzs, $usd]) {
+                if (!CargoFare::live()->series($type->id, $route->id, null)->exists()) {
+                    CargoFare::create([
+                        'route_id' => $route->id,
+                        'cargo_type_id' => $type->id,
+                        'price_tzs' => $tzs,
+                        'price_usd' => $usd,
+                        'status' => 'active',
+                        'change_reason' => 'Demo data',
+                    ]);
+                }
+            }
         }
     }
 }

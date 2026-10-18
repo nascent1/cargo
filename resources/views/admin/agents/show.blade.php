@@ -166,6 +166,7 @@
                 <!-- Edit Mode Form -->
                 <form x-show="editing" action="{{ route('admin.agents.update', $agent) }}" method="POST" class="mt-4 space-y-3 text-sm" style="display: none;">
                     @csrf
+                    <x-dual-control.takes-effect op="agent_update" />
                     @method('PUT')
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">Agency Name</label>
@@ -280,8 +281,12 @@
                                             </select>
                                         </div>
                                     </div>
+                                    @php $approveRemove ??= app(\App\Services\DualControlService::class)->requiresDualControl('associate_update'); @endphp
                                     <div class="flex items-center justify-between pt-1">
-                                        <button type="submit" form="del-associate-{{ $associate->id }}" onclick="return confirm('Remove associate staff member?')" class="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1">
+                                        <button type="submit" form="del-associate-{{ $associate->id }}"
+                                            data-confirm="Their login is deactivated.{{ $approveRemove ? ' A checker must approve it first.' : '' }}"
+                                            data-confirm-title="Remove {{ $associate->associate_name }}?" data-confirm-button="{{ $approveRemove ? 'Request removal' : 'Remove' }}"
+                                            data-confirm-tone="danger" data-confirm-icon="fa-user-minus" class="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1">
                                             <i class="fas fa-trash-alt"></i> Remove
                                         </button>
                                         <div class="flex gap-2">
@@ -397,6 +402,7 @@
                 <!-- Edit Mode Form -->
                 <form x-show="editFleet" action="{{ route('admin.agents.update-ferries', $agent) }}" method="POST" class="mt-4 space-y-3" style="display: none;">
                     @csrf
+                    <x-dual-control.takes-effect op="agent_ferries_update" />
                     @method('PUT')
                     <p class="text-xs text-slate-500 mb-2">Select the vessels that {{ $agent->agency_name }} is authorized to issue tickets for, and set their status:</p>
                     
@@ -458,6 +464,7 @@
                 <!-- Edit Mode Form -->
                 <form x-show="editRoutes" action="{{ route('admin.agents.update-routes', $agent) }}" method="POST" class="mt-4 space-y-3" style="display: none;">
                     @csrf
+                    <x-dual-control.takes-effect op="agent_routes_update" />
                     @method('PUT')
                     <p class="text-xs text-slate-500 mb-2">Select the routes that {{ $agent->agency_name }} is authorized to issue tickets for, and set their status:</p>
                     

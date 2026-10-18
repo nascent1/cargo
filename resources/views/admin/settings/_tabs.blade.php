@@ -28,6 +28,12 @@
            class="rounded-lg px-4 py-2.5 text-sm font-medium transition-all {{ request()->routeIs('admin.settings.payment-channels.*') ? 'bg-white text-brand-700 shadow-sm ring-1 ring-surface-200/50' : 'text-surface-500 hover:text-surface-700 hover:bg-white/50' }}">
             <i class="fas fa-wallet mr-2"></i>Payment Channels
         </a>
+        @if(auth()->user()?->hasPermission('integration:read'))
+        <a href="{{ route('admin.settings.integrations.index') }}"
+           class="rounded-lg px-4 py-2.5 text-sm font-medium transition-all {{ request()->routeIs('admin.settings.integrations.*') ? 'bg-white text-brand-700 shadow-sm ring-1 ring-surface-200/50' : 'text-surface-500 hover:text-surface-700 hover:bg-white/50' }}">
+            <i class="fas fa-plug mr-2"></i>Integrations
+        </a>
+        @endif
         <a href="{{ route('admin.settings.change-password') }}"
            class="rounded-lg px-4 py-2.5 text-sm font-medium transition-all {{ request()->routeIs('admin.settings.change-password') ? 'bg-white text-brand-700 shadow-sm ring-1 ring-surface-200/50' : 'text-surface-500 hover:text-surface-700 hover:bg-white/50' }}">
             <i class="fas fa-key mr-2"></i>Change Password

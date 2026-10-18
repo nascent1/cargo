@@ -136,6 +136,7 @@
                             </div>
 
                             @if($role->slug !== 'super_admin')
+                            <div class="px-6 pt-4 shrink-0"><x-dual-control.takes-effect op="role_permissions_update" /></div>
                             <div class="px-6 py-4 border-t border-surface-100 flex justify-end bg-surface-50/50 shrink-0">
                                 @php $canManageRole = auth()->user()->hasPermission('role:manage'); @endphp
                                 @if($canManageRole)
@@ -193,6 +194,7 @@
                     <textarea name="description" rows="2" placeholder="Brief description of this role's purpose..."
                               class="w-full bg-white border border-surface-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors placeholder:text-surface-400 text-surface-900 shadow-sm resize-none"></textarea>
                 </div>
+                <x-dual-control.takes-effect op="role_create" />
                 <div class="flex items-center justify-end gap-3 pt-2">
                     <button type="button" @click="showCreateModal = false" class="px-4 py-2 rounded-xl border border-surface-300 text-surface-600 font-semibold text-sm hover:bg-surface-50 transition-colors">Cancel</button>
                     <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40 transition-all">
@@ -234,6 +236,7 @@
                     <textarea name="description" x-model="editRole.description" rows="2"
                               class="w-full bg-white border border-surface-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors shadow-sm resize-none"></textarea>
                 </div>
+                <x-dual-control.takes-effect op="role_update" />
                 <div class="flex items-center justify-end gap-3 pt-2">
                     <button type="button" @click="showEditModal = false" class="px-4 py-2 rounded-xl border border-surface-300 text-surface-600 font-semibold text-sm hover:bg-surface-50 transition-colors">Cancel</button>
                     <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40 transition-all">
@@ -265,6 +268,7 @@
                 <p class="text-sm text-surface-600 mb-6">
                     Are you sure you want to delete the <span class="font-bold text-surface-900" x-text="deleteRole.display_name"></span> role? This action cannot be undone and will fail if users are still assigned to it.
                 </p>
+                <x-dual-control.takes-effect op="role_delete" class="mb-4" />
                 <div class="flex items-center justify-end gap-3">
                     <button type="button" @click="showDeleteModal = false" class="px-4 py-2 rounded-xl border border-surface-300 text-surface-600 font-semibold text-sm hover:bg-surface-50 transition-colors">Cancel</button>
                     <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 hover:bg-rose-700 transition-all">

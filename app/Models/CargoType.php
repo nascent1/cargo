@@ -27,6 +27,22 @@ class CargoType extends Model
         return $this->hasMany(CargoFare::class);
     }
 
+    /**
+     * Fares pricing bookings right now.
+     */
+    public function currentFares()
+    {
+        return $this->hasMany(CargoFare::class)->effectiveAt(now());
+    }
+
+    /**
+     * Current and scheduled fares (what prices now or will).
+     */
+    public function liveFares()
+    {
+        return $this->hasMany(CargoFare::class)->live();
+    }
+
     public function items()
     {
         return $this->hasMany(CargoItem::class);

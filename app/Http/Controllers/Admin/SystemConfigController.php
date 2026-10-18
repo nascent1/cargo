@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\SystemConfig;
 use App\Models\Role;
@@ -12,6 +13,17 @@ use Illuminate\Http\Request;
 
 class SystemConfigController extends Controller
 {
+    use SubmitsDualControl;
+
+    /** Settings with a typed input on the General tab, checked before they go to approval. */
+    private const TYPED_RULES = [
+        'close_of_business_buffer_minutes' => 'integer|min:0|max:240',
+        'close_of_business_fallback_time' => 'date_format:H:i',
+        'default_shift_hours' => 'numeric|min:0.5|max:24',
+        'shift_rest_hours' => 'numeric|min:0|max:24',
+        'shift_warning_minutes' => 'integer|min:0|max:120',
+    ];
+
     /**
      * General settings tab (system_configs table).
      */
@@ -26,9 +38,18 @@ class SystemConfigController extends Controller
      */
     public function update(Request $request, \App\Services\DualControlService $dualControl)
     {
-        $validated = $request->validate(['settings' => 'required|array']);
+        $typed = collect(self::TYPED_RULES);
+        $request->validate(
+            ['settings' => 'required|array'] + $typed->mapWithKeys(fn ($rule, $key) => ["settings.{$key}" => "sometimes|required|{$rule}"])->all(),
+            [],
+            $typed->mapWithKeys(fn ($rule, $key) => ["settings.{$key}" => str_replace('_', ' ', $key)])->all(),
+        );
+        // Not validated(): with rules for some keys it would drop every other setting
+        $validated = ['settings' => (array) $request->input('settings', [])];
         $dualControlCount = 0;
         $directUpdateCount = 0;
+        $scheduledCount = 0;
+        $blocked = [];
 
         foreach ($validated['settings'] as $key => $value) {
             $config = SystemConfig::where('key_name', $key)->first();
@@ -54,27 +75,33 @@ class SystemConfigController extends Controller
 
             if ($config && $config->value !== $value) {
                 $operationType = ($key === 'commission_default_method') ? 'commission_method_update' : 'setting_update';
-                $dcReq = $dualControl->submit($operationType, 'system_config', $config->id, [
-                    'before' => ['value' => $config->value, 'key_name' => $key],
-                    'after'  => ['value' => $value, 'key_name' => $key],
-                ]);
-
-                if ($dcReq->status === 'pending') {
-                    $dualControlCount++;
-                } else {
-                    $directUpdateCount++;
+                try {
+                    $dcReq = $dualControl->submit($operationType, 'system_config', $config->id, [
+                        'before' => ['value' => $config->value, 'key_name' => $key],
+                        'after'  => ['value' => $value, 'key_name' => $key],
+                    ], ['commence_at' => $this->takesEffect($request, $operationType)]);
+                } catch (\App\Services\DualControl\DualControlException $e) {
+                    $blocked[] = $key;
+                    continue;
                 }
+
+                match ($dcReq->status) {
+                    'pending' => $dualControlCount++,
+                    'scheduled' => $scheduledCount++,
+                    default => $directUpdateCount++,
+                };
             }
         }
 
-        if ($dualControlCount > 0 && $directUpdateCount > 0) {
-            $message = "Settings processed: {$directUpdateCount} updated immediately, {$dualControlCount} submitted for Maker-Checker Dual Control approval.";
-        } elseif ($dualControlCount > 0) {
-            $message = "Configuration changes require Maker-Checker approval ({$dualControlCount} update request(s) submitted to Checker queue).";
-        } elseif ($directUpdateCount > 0) {
-            $message = 'Settings updated successfully.';
-        } else {
-            $message = 'No changes detected in system settings.';
+        $parts = array_filter([
+            $directUpdateCount ? "{$directUpdateCount} updated" : null,
+            $scheduledCount ? "{$scheduledCount} scheduled" : null,
+            $dualControlCount ? "{$dualControlCount} awaiting approval" : null,
+        ]);
+        $message = $parts ? 'Settings: ' . implode(', ', $parts) . '.' : 'No changes detected in system settings.';
+        if ($blocked) {
+            return redirect()->back()->with('success', $parts ? $message : null)
+                ->with('error', 'Not changed (another change to it is open): ' . implode(', ', $blocked) . '.');
         }
 
         return redirect()->back()->with('success', $message);
@@ -100,13 +127,13 @@ class SystemConfigController extends Controller
             'permissions.*' => 'exists:permissions,id',
         ]);
 
-        $before = $role->permissions->pluck('id')->toArray();
-        $role->permissions()->sync($validated['permissions'] ?? []);
-        $after = $role->fresh()->permissions->pluck('id')->toArray();
+        // Through dual control (role_permissions_update)
+        $before = $role->permissions->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+        $after = collect($validated['permissions'] ?? [])->map(fn ($id) => (int) $id)->unique()->sort()->values()->all();
 
-        AuditLog::createEntry(auth()->id(), 'update', 'Role', $role->id, ['permissions' => $before], ['permissions' => $after], $request->ip());
-
-        return redirect()->route('admin.settings.roles')->with('success', "Permissions updated for role: {$role->display_name}.");
+        return $this->submitChange($request, 'role_permissions_update', 'role', $role->id,
+            ['before' => ['permissions' => $before], 'after' => ['permissions' => $after, 'role' => $role->display_name]],
+            "Permissions updated for role: {$role->display_name}.", route('admin.settings.roles'));
     }
 
     /**
@@ -200,27 +227,9 @@ class SystemConfigController extends Controller
             'description' => 'nullable|string|max:255',
         ]);
 
-        // Auto-generate slug from display name
-        $slug = \Illuminate\Support\Str::slug($validated['display_name'], '_');
-
-        // Ensure uniqueness
-        $originalSlug = $slug;
-        $counter = 1;
-        while (Role::where('slug', $slug)->orWhere('name', $slug)->exists()) {
-            $slug = $originalSlug . '_' . $counter++;
-        }
-
-        $role = Role::create([
-            'name' => $slug,
-            'slug' => $slug,
-            'display_name' => $validated['display_name'],
-            'description' => $validated['description'] ?? null,
-            'is_system' => false,
-        ]);
-
-        AuditLog::createEntry(auth()->id(), 'create', 'Role', $role->id, [], $role->toArray(), $request->ip());
-
-        return redirect()->route('admin.settings.roles')->with('success', "Role \"{$role->display_name}\" created successfully.");
+        // Through dual control (role_create); the slug is chosen when the role is created (RoleHandler)
+        return $this->submitChange($request, 'role_create', 'role', 0, ['after' => $validated],
+            "Role \"{$validated['display_name']}\" created.", route('admin.settings.roles'));
     }
 
     /**
@@ -233,15 +242,10 @@ class SystemConfigController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $before = $role->toArray();
-        $role->update([
-            'display_name' => $validated['display_name'],
-            'description' => $validated['description'],
-        ]);
-
-        AuditLog::createEntry(auth()->id(), 'update', 'Role', $role->id, $before, $role->toArray(), $request->ip());
-
-        return redirect()->route('admin.settings.roles')->with('success', "Role \"{$role->display_name}\" updated successfully.");
+        return $this->submitChange($request, 'role_update', 'role', $role->id, [
+            'before' => $role->only(['display_name', 'description']),
+            'after' => ['display_name' => $validated['display_name'], 'description' => $validated['description'] ?? null],
+        ], "Role \"{$validated['display_name']}\" updated.", route('admin.settings.roles'));
     }
 
     /**
@@ -259,12 +263,8 @@ class SystemConfigController extends Controller
             return back()->with('error', "Cannot delete role \"{$role->display_name}\": {$usersCount} user(s) are assigned to it.");
         }
 
-        $roleName = $role->display_name;
-        AuditLog::createEntry(auth()->id(), 'delete', 'Role', $role->id, $role->toArray(), [], $request->ip());
-        $role->permissions()->detach();
-        $role->delete();
-
-        return redirect()->route('admin.settings.roles')->with('success', "Role \"{$roleName}\" deleted.");
+        return $this->submitChange($request, 'role_delete', 'role', $role->id,
+            ['before' => $role->only(['display_name', 'description', 'slug'])], "Role \"{$role->display_name}\" deleted.", route('admin.settings.roles'));
     }
 
     // ── Portal Change Password (JSON API) ───────────────────────

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +11,8 @@ use App\Services\DualControlService;
 
 class LookupController extends Controller
 {
+    use SubmitsDualControl;
+
     protected DualControlService $dcService;
 
     public function __construct(DualControlService $dcService)
@@ -125,34 +128,24 @@ class LookupController extends Controller
 
         $payload = array_merge($data, ['_table' => $table]);
 
+        $back = route('admin.settings.lookups.index', ['tab' => $table]);
         if ($id) {
-            $this->dcService->submit('lookup_update', 'lookup', $id, [
-                'after' => $payload
-            ]);
-            $message = 'Lookup update submitted for authorization.';
-        } else {
-            $this->dcService->submit('lookup_create', 'lookup', 0, [
-                'after' => $payload
-            ]);
-            $message = 'Lookup creation submitted for authorization.';
+            return $this->submitChange($request, 'lookup_update', 'lookup', $id, ['after' => $payload], 'Lookup updated.', $back, ['subject_key' => "lookup:{$table}:{$id}"]);
         }
 
-        return redirect()->route('admin.settings.lookups.index', ['tab' => $table])->with('success', $message);
+        return $this->submitChange($request, 'lookup_create', 'lookup', 0, ['after' => $payload], 'Lookup created.', $back);
     }
 
     /**
      * Remove the specified lookup item.
      */
-    public function destroy(string $table, int $id)
+    public function destroy(Request $request, string $table, int $id)
     {
         if (!isset($this->allowedTables[$table])) {
             return redirect()->back()->with('error', 'Invalid lookup table specified.');
         }
 
-        $this->dcService->submit('lookup_delete', 'lookup', $id, [
-            'after' => ['_table' => $table]
-        ]);
-
-        return redirect()->route('admin.settings.lookups.index', ['tab' => $table])->with('success', 'Lookup deletion submitted for authorization.');
+        return $this->submitChange($request, 'lookup_delete', 'lookup', $id, ['after' => ['_table' => $table]], 'Lookup deleted.',
+            route('admin.settings.lookups.index', ['tab' => $table]), ['subject_key' => "lookup:{$table}:{$id}"]);
     }
 }

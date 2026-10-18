@@ -2,6 +2,8 @@
     <x-slot:title>Stations Management</x-slot:title>
     <x-slot:header>Stations & Destinations</x-slot:header>
 
+    @php $statusNeedsApproval = app(\App\Services\DualControlService::class)->requiresDualControl('station_status_update'); @endphp
+
     <div class="flex justify-between items-center mb-6">
         <div>
             <h2 class="text-2xl font-bold text-slate-800">Station Directory</h2>
@@ -64,6 +66,7 @@
                                         <i class="fas fa-map-marker-alt text-indigo-500"></i>
                                     </div>
                                     <span class="font-bold text-slate-800">{{ $station->name }}</span>
+                                    <x-dual-control.pending-badge subject="station:{{ $station->id }}" />
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-slate-700 font-medium">
@@ -98,6 +101,7 @@
                                     <button type="button" 
                                             @click="$dispatch('open-action-modal', {
                                                 formAction: '{{ route('admin.cargo.stations.update-status', $station) }}',
+                                                takesEffect: true, needsApproval: @js($statusNeedsApproval),
                                                 formMethod: 'PATCH',
                                                 statusValue: 'inactive',
                                                 title: 'Suspend Station',
@@ -121,6 +125,7 @@
                                     <button type="button" 
                                             @click="$dispatch('open-action-modal', {
                                                 formAction: '{{ route('admin.cargo.stations.update-status', $station) }}',
+                                                takesEffect: true, needsApproval: @js($statusNeedsApproval),
                                                 formMethod: 'PATCH',
                                                 statusValue: 'active',
                                                 title: 'Activate Station',

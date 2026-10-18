@@ -47,7 +47,8 @@
                                 <form action="{{ route('admin.notifications.toggle-announcement', $a) }}" method="POST">@csrf
                                     <button class="text-xs text-blue-600 hover:text-blue-800">{{ $a->is_active ? 'Hide' : 'Show' }}</button>
                                 </form>
-                                <form action="{{ route('admin.notifications.destroy-announcement', $a) }}" method="POST" onsubmit="return confirm('Delete announcement?')">@csrf @method('DELETE')
+                                <form action="{{ route('admin.notifications.destroy-announcement', $a) }}" method="POST"
+                                    data-confirm="This can't be undone." data-confirm-title="Delete “{{ $a->title }}”?" data-confirm-button="Delete" data-confirm-tone="danger">@csrf @method('DELETE')
                                     <button class="text-xs text-red-600 hover:text-red-800">Delete</button>
                                 </form>
                             </td>

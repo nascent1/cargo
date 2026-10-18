@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\Menu;
 use App\Models\Permission;
@@ -10,6 +11,8 @@ use Illuminate\Http\Request;
 
 class MenuController extends Controller
 {
+    use SubmitsDualControl;
+
     protected DualControlService $dcService;
 
     public function __construct(DualControlService $dcService)
@@ -44,9 +47,7 @@ class MenuController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
 
-        $this->dcService->submit('menu_create', 'menu', 0, ['after' => $validated]);
-
-        return redirect()->route('admin.settings.menus.index')->with('success', 'Menu creation submitted for authorization.');
+        return $this->submitChange($request, 'menu_create', 'menu', 0, ['after' => $validated], 'Menu created.', route('admin.settings.menus.index'));
     }
 
     public function edit(Menu $menu)
@@ -71,12 +72,10 @@ class MenuController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
 
-        $this->dcService->submit('menu_update', 'menu', $menu->id, [
+        return $this->submitChange($request, 'menu_update', 'menu', $menu->id, [
             'before' => $menu->toArray(),
-            'after' => $validated
-        ]);
-
-        return redirect()->route('admin.settings.menus.index')->with('success', 'Menu update submitted for authorization.');
+            'after' => array_merge($menu->toArray(), $validated),
+        ], 'Menu updated.', route('admin.settings.menus.index'));
     }
 
     public function updateOrder(Request $request)
@@ -98,16 +97,12 @@ class MenuController extends Controller
         return redirect()->route('admin.settings.menus.index')->with('success', 'Menu order updated.');
     }
 
-    public function destroy(Menu $menu)
+    public function destroy(Request $request, Menu $menu)
     {
         if ($menu->children()->count() > 0) {
             return redirect()->back()->with('error', 'Cannot delete menu with children. Delete children first.');
         }
 
-        $this->dcService->submit('menu_delete', 'menu', $menu->id, [
-            'before' => $menu->toArray()
-        ]);
-
-        return redirect()->route('admin.settings.menus.index')->with('success', 'Menu deletion submitted for authorization.');
+        return $this->submitChange($request, 'menu_delete', 'menu', $menu->id, ['before' => $menu->toArray()], 'Menu deleted.', route('admin.settings.menus.index'));
     }
 }

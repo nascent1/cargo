@@ -170,6 +170,7 @@
                 <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse gap-2">
                     <form method="POST" action="{{ route('admin.users.reset-2fa', $user) }}">
                         @csrf
+                        <x-dual-control.takes-effect op="user_2fa_reset" class="mx-6 mt-4" />
                         <button type="submit" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:w-auto sm:text-sm">
                             Reset 2FA
                         </button>
@@ -192,6 +193,7 @@
             <div x-show="showPasswordModal" @click.away="showPasswordModal = false" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-2xl shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6 border border-slate-100">
                 <form method="POST" action="{{ route('admin.users.reset-password', $user) }}">
                     @csrf
+                    <x-dual-control.takes-effect op="user_password_reset" class="mx-6 mt-4" />
                     <div class="sm:flex sm:items-start">
                         <div class="flex items-center justify-center flex-shrink-0 w-12 h-12 mx-auto bg-amber-100 rounded-full sm:mx-0 sm:h-10 sm:w-10 text-amber-600">
                             <i class="fas fa-key"></i>

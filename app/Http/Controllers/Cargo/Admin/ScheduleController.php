@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cargo\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\Trip;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
 {
+    use SubmitsDualControl;
+
     public function index()
     {
         $schedules = Schedule::with(['trip.route', 'transportUnit'])->latest()->paginate(10);
@@ -33,9 +36,15 @@ class ScheduleController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        $dcService->submit('cargo_schedule_create', 'cargo_schedule', 0, ['after' => $validated]);
-
-        return redirect()->route('admin.cargo.schedules.index')->with('success', 'Schedule creation submitted successfully.');
+        // A recurring vessel schedule (departures are generated from it) — the same record the vessel profile's
+        // Schedules tab creates. It used to be submitted as a departure (cargo_schedule_create), which could never apply.
+        return $this->submitChange($request, 'schedule_create', 'schedule', 0, ['after' => [
+            'trip_id' => (int) $validated['trip_id'],
+            'ferry_id' => (int) $validated['transport_unit_id'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
+            'status' => 'active',
+        ]], 'Schedule added.', route('admin.cargo.schedules.index'));
     }
 
     public function show(string $id)

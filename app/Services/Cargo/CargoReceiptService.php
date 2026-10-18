@@ -61,7 +61,8 @@ class CargoReceiptService
             'receipt_id' => $receipt->id,
             'receipt_number' => $receipt->receipt_number,
             'text_lines' => $lines,
-            'qr_data' => $this->getConfig('tracking_qr_base_url', 'http://127.0.0.1/track') . '/' . $consignment->consignment_number
+            // Public tracking page: APP_URL from .env + /track/{booking number}
+            'qr_data' => \App\Support\TrackingUrl::for($consignment->consignment_number),
         ];
     }
 

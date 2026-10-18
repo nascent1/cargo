@@ -3,64 +3,53 @@
 namespace App\Http\Controllers\Cargo;
 
 use App\Http\Controllers\Controller;
+use App\Services\Cargo\PublicTrackingService;
+use App\Services\SmsNotifier;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Models\Consignment;
 
+/**
+ * Public cargo tracking (no login): the page linked from booking SMS and receipt QR codes, and
+ * the same data as JSON. Only PublicTrackingService's public-safe fields are ever returned.
+ */
 class TrackingController extends Controller
 {
-    /**
-     * Public page view for tracking.
-     */
-    public function view(Request $request, $consignmentNumber = null)
+    public function __construct(private PublicTrackingService $tracking)
     {
-        return view('cargo.tracking.index', compact('consignmentNumber'));
     }
 
     /**
-     * API for public tracking.
+     * /track (search form) and /track/{number}.
      */
-    public function track(Request $request, $consignmentNumber)
+    public function view(Request $request, ?string $consignmentNumber = null)
     {
-        $consignment = Consignment::with([
-            'items' => function($q) {
-                $q->select('id', 'consignment_id', 'cargo_type_id', 'item_number', 'status', 'barcode', 'description');
-            },
-            'items.cargoType' => function($q) {
-                $q->select('id', 'name', 'icon');
-            },
-            'trackingEvents' => function($q) {
-                $q->whereNull('cargo_item_id')->orderBy('created_at', 'desc'); // Consignment level events
-            },
-            'route.origin',
-            'route.destination'
-        ])
-        ->select('id', 'consignment_number', 'status', 'route_id', 'sender_name', 'receiver_name', 'estimated_arrival_at', 'created_at')
-        ->where('consignment_number', $consignmentNumber)
-        ->first();
-
-        if (!$consignment) {
-            return response()->json(['error' => 'Consignment not found'], 404);
-        }
-
-        // Mask PII for public view
-        $consignment->sender_name = $this->maskName($consignment->sender_name);
-        $consignment->receiver_name = $this->maskName($consignment->receiver_name);
-
-        return response()->json($consignment);
-    }
-
-    private function maskName(string $name): string
-    {
-        $parts = explode(' ', trim($name));
-        $masked = [];
-        foreach ($parts as $index => $part) {
-            if ($index === 0) { // Keep first name
-                $masked[] = $part;
-            } else {
-                // Mask surname to first letter only
-                $masked[] = substr($part, 0, 1) . '***';
+        $searched = $request->query('number');
+        if ($consignmentNumber === null && filled($searched)) {
+            $number = strtoupper(trim((string) $searched));
+            if (PublicTrackingService::isValidNumber($number)) {
+                return redirect()->route('tracking.show', $number);
             }
+            $consignmentNumber = (string) $searched;
         }
-        return implode(' ', $masked);
+
+        $result = $consignmentNumber !== null ? $this->tracking->lookup($consignmentNumber) : null;
+
+        return response()->view('cargo.tracking.index', [
+            'number' => $consignmentNumber,
+            'result' => $result,
+            'company' => SmsNotifier::companyName(),
+        ], $consignmentNumber !== null && !$result ? 404 : 200);
+    }
+
+    /**
+     * GET /api/v1/cargo/track/{number}
+     */
+    public function track(string $consignmentNumber): JsonResponse
+    {
+        $result = $this->tracking->lookup($consignmentNumber);
+
+        return $result
+            ? response()->json($result)
+            : response()->json(['error' => 'Booking not found. Check the number on your SMS or receipt.'], 404);
     }
 }

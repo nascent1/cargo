@@ -4,19 +4,19 @@
     <!-- Loading -->
     <div v-if="loading" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center text-slate-400">
       <i class="fas fa-circle-notch fa-spin text-2xl text-brand-400 mb-3 block"></i>
-      <p class="text-sm">Loading consignment details...</p>
+      <p class="text-sm">Loading the booking…</p>
     </div>
 
     <!-- Not Found -->
     <div v-else-if="!booking" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
       <i class="fas fa-search text-3xl text-slate-300 mb-4 block"></i>
-      <p class="text-slate-600 font-semibold">Consignment not found</p>
+      <p class="text-slate-600 font-semibold">Booking not found</p>
       <router-link to="/cargo-bookings" class="text-sm text-brand-600 mt-2 inline-block hover:underline">
-        ← Back to list
+        ← Back to bookings
       </router-link>
     </div>
 
-    <div v-else class="bg-slate-50 text-slate-800 p-5 sm:p-7 rounded-3xl border border-slate-200/80 shadow-sm space-y-7">
+    <div v-else class="text-slate-800 space-y-6 max-w-7xl">
 
       <!-- Header Row -->
       <div class="flex flex-wrap items-center justify-between gap-4">
@@ -30,7 +30,7 @@
         </div>
         <router-link to="/cargo-bookings"
           class="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 transition-colors text-xs flex items-center gap-1.5 shadow-sm">
-          <i class="fas fa-arrow-left"></i> Back to Consignments
+          <i class="fas fa-arrow-left"></i> Back to bookings
         </router-link>
       </div>
 
@@ -91,10 +91,16 @@
         @paid="onPaid"
         @cancelled="onCancelled" />
 
+      <!-- Left behind (paid, not loaded when the vessel departed) -->
+      <div v-if="booking.left_behind_at && booking.status === 'booked'" class="p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 text-sm">
+        <i class="fas fa-triangle-exclamation mr-1"></i><strong>Left behind:</strong> paid but not loaded when the vessel departed ({{ formatDateTime(booking.left_behind_at) }}).
+        Contact the sender about the next departure, or cancel and refund.
+      </div>
+
       <!-- Flash -->
       <div v-if="flash" :class="['p-4 rounded-2xl flex items-start gap-3 font-semibold text-sm border',
-        flash.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700']">
-        <i :class="['fas mt-0.5', flash.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle']"></i>
+        flash.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : flash.type === 'info' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-200 text-rose-700']">
+        <i :class="['fas mt-0.5', flash.type === 'success' ? 'fa-check-circle' : flash.type === 'info' ? 'fa-hourglass-half' : 'fa-exclamation-triangle']"></i>
         <div class="flex-1">{{ flash.message }}</div>
         <button @click="flash = null" class="opacity-60 hover:opacity-100"><i class="fas fa-times"></i></button>
       </div>
@@ -137,7 +143,11 @@
                     {{ item.cargo_type?.name || 'Unknown' }}
                     <span v-if="item.is_fragile" class="ml-1 text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Fragile</span>
                   </td>
-                  <td class="py-4 px-4">{{ item.description || 'No description' }}</td>
+                  <td class="py-4 px-4">
+                    {{ Number(item.quantity) > 1 ? item.quantity + ' × ' : '' }}{{ item.description || 'No description' }}
+                    <div v-if="item.vehicle_reg_number" class="text-slate-500 mt-0.5">Reg <span class="font-mono font-bold text-slate-700">{{ item.vehicle_reg_number }}</span><span v-if="item.driver_name"> · Driver {{ item.driver_name }}</span></div>
+                    <div v-if="Number(item.declared_value) > 0" class="text-slate-500 mt-0.5">Declared value {{ num(item.declared_value) }}<span v-if="Number(item.value_charge) > 0"> · value charge <span class="font-semibold text-slate-700">{{ num(item.value_charge) }}</span></span></div>
+                  </td>
                   <td class="py-4 px-4">
                     <div>{{ num(item.weight_kg, 2) }} kg</div>
                     <div class="text-slate-500">{{ num(item.volume_cbm, 4) }} cbm</div>
@@ -158,6 +168,18 @@
       <!-- TAB: Tracking History -->
       <div v-show="activeTab === 'tracking'" class="space-y-4">
         <h3 class="text-xl font-bold text-slate-800 tracking-tight">Tracking History</h3>
+        <div v-if="booking.collected_by_name" class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 text-sm">
+          <h4 class="font-bold text-slate-800 mb-3"><i class="fas fa-hand-holding text-brand-600 mr-1"></i> Collection</h4>
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><dt class="text-xs text-slate-500">Collected by</dt><dd class="font-semibold">{{ booking.collected_by_name }}</dd></div>
+            <div><dt class="text-xs text-slate-500">ID</dt><dd class="font-semibold font-mono">{{ booking.collected_id_number }}</dd></div>
+            <div><dt class="text-xs text-slate-500">Mobile</dt><dd class="font-semibold font-mono">{{ booking.collected_phone }}
+              <span v-if="booking.collected_phone_verified" class="ml-1 text-xs font-sans text-emerald-700"><i class="fas fa-circle-check"></i> confirmed by code</span>
+              <span v-else class="ml-1 text-xs font-sans text-amber-700"><i class="fas fa-triangle-exclamation"></i> not confirmed</span></dd></div>
+            <div><dt class="text-xs text-slate-500">When</dt><dd class="font-semibold">{{ formatDateTime(booking.collected_at) }}</dd></div>
+          </dl>
+          <ul v-if="booking.collection_warnings?.length" class="mt-3 text-xs text-amber-800 list-disc ml-5"><li v-for="w in booking.collection_warnings" :key="w">{{ w }}</li></ul>
+        </div>
         <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
           <p v-if="!booking.tracking_events?.length" class="text-center py-8 text-slate-500">No tracking events recorded.</p>
           <div v-else>
@@ -264,34 +286,8 @@
       </form>
     </div>
 
-    <!-- Status Update Modal -->
-    <div v-if="showStatusModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showStatusModal = false"></div>
-      <form @submit.prevent="submitStatus" class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100">
-        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <i class="fas fa-exchange-alt text-brand-600"></i> Update Status
-          </h3>
-          <button type="button" @click="showStatusModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
-            <i class="fas fa-times text-lg"></i>
-          </button>
-        </div>
-        <div class="p-6">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">New Status</label>
-          <select v-model="statusUpdate" required
-            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:bg-white outline-none transition-colors">
-            <option v-for="s in booking?.actions?.allowed_statuses || []" :key="s" :value="s">{{ STATUS_OPTION_LABELS[s] || statusLabel(s) }}</option>
-          </select>
-        </div>
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-          <button type="button" @click="showStatusModal = false" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-colors">Cancel</button>
-          <button type="submit" :disabled="submitting || !statusUpdate"
-            class="px-5 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-brand-700 disabled:opacity-50 transition-colors flex items-center gap-2">
-            <i v-if="submitting" class="fas fa-circle-notch fa-spin text-xs"></i> Update
-          </button>
-        </div>
-      </form>
-    </div>
+    <!-- Hand over (collector's ID + mobile confirmed by a code) -->
+    <HandoverModal v-if="showHandover" :booking="booking" @close="showHandover = false" @done="handedOver" />
 
   </div>
 </template>
@@ -302,8 +298,12 @@ import { useRoute } from 'vue-router';
 import axios from 'axios';
 import moment from 'moment';
 import PaymentPanel from '../../components/cargo/PaymentPanel.vue';
+import HandoverModal from '../../components/cargo/HandoverModal.vue';
+import { badge } from '../../utils/cargoUi';
+import { useUiStore } from '../../stores/ui';
 
 const route   = useRoute();
+const uiStore = useUiStore();
 const booking = ref(null);
 const loading = ref(true);
 
@@ -312,26 +312,8 @@ const tabsEl          = ref(null);
 const flash           = ref(null);
 const submitting      = ref(false);
 const showCancelModal = ref(false);
-const showStatusModal = ref(false);
+const showHandover    = ref(false);
 const cancelReason    = ref('');
-const statusUpdate    = ref('');
-
-const STATUS = {
-    pending_payment: { label: 'Awaiting Payment', cls: 'bg-orange-100 text-orange-800 border-orange-300' },
-    booked:     { label: 'Booked',     cls: 'bg-amber-100 text-amber-800 border-amber-300' },
-    loaded:     { label: 'Loaded',     cls: 'bg-blue-100 text-blue-800 border-blue-300' },
-    in_transit: { label: 'In Transit', cls: 'bg-violet-100 text-violet-800 border-violet-300' },
-    delivered:  { label: 'Delivered',  cls: 'bg-emerald-600 text-white border-emerald-600' },
-    collected:  { label: 'Collected',  cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-    cancelled:  { label: 'Cancelled',  cls: 'bg-rose-100 text-rose-800 border-rose-300' },
-};
-
-const STATUS_OPTION_LABELS = {
-    loaded:     'Loaded',
-    in_transit: 'In Transit',
-    delivered:  'Delivered (Arrived at Dest)',
-    collected:  'Collected by Receiver',
-};
 
 const paymentMethods = ref([]);
 
@@ -341,8 +323,8 @@ const ATTEMPT_CLS = {
 };
 const attemptCls = (s) => ATTEMPT_CLS[s] || 'bg-sky-100 text-sky-700';
 
-const statusLabel    = (s) => STATUS[s]?.label || (s ? s.replace(/_/g, ' ') : '—');
-const statusCls      = (s) => STATUS[s]?.cls || 'bg-slate-100 text-slate-700 border-slate-200';
+const statusLabel    = (s) => badge('status', s).label;
+const statusCls      = (s) => badge('status', s).cls;
 const formatDateTime = (d) => (d ? moment(d).format('DD MMM YYYY, HH:mm') : '—');
 const num            = (v, dp = 0) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const fullName       = (u) => (u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email : 'System');
@@ -381,13 +363,20 @@ const tabs = computed(() => [
 const actionTiles = computed(() => {
     const actions = booking.value?.actions || {};
     return [
-        {
-            key: 'status', icon: 'fa-exchange-alt', label: 'Update<br>Status',
-            enabled: (actions.allowed_statuses || []).length > 0,
-            hover: 'hover:bg-brand-50/60 hover:border-brand-300 hover:text-brand-600',
-            iconCls: 'bg-brand-50 text-brand-600 group-hover:bg-brand-600 group-hover:text-white',
-            run: openStatusModal,
-        },
+        // Next port step: load before departure, hand over on arrival (in transit / arrived follow the journey)
+        actions.can_handover
+            ? {
+                key: 'handover', icon: 'fa-hand-holding', label: 'Hand<br>Over', enabled: true,
+                hover: 'hover:bg-emerald-50/60 hover:border-emerald-300 hover:text-emerald-600',
+                iconCls: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+                run: () => { showHandover.value = true; },
+            }
+            : {
+                key: 'load', icon: 'fa-dolly', label: actions.can_load ? 'Mark<br>Loaded' : nextStepLabel.value, enabled: !!actions.can_load,
+                hover: 'hover:bg-brand-50/60 hover:border-brand-300 hover:text-brand-600',
+                iconCls: 'bg-brand-50 text-brand-600 group-hover:bg-brand-600 group-hover:text-white',
+                run: markLoaded,
+            },
         {
             key: 'print', icon: 'fa-print', label: 'Print<br>Receipt',
             enabled: !!actions.can_print,
@@ -453,17 +442,29 @@ const showTracking = async () => {
     tabsEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
-const openStatusModal = () => {
-    statusUpdate.value = booking.value.actions.allowed_statuses[0] || '';
-    showStatusModal.value = true;
+// What happens next when this user has no port action here
+const nextStepLabel = computed(() => {
+    const b = booking.value || {};
+    if (b.left_behind_at && b.status === 'booked') return 'Left<br>behind';
+    return { loaded: 'Departs with<br>the vessel', in_transit: 'Arrives with<br>the vessel', collected: 'Collected' }[b.status] || 'Next<br>step';
+});
+
+const handedOver = async (data) => {
+    showHandover.value = false;
+    flash.value = data.warnings?.length
+        ? { type: 'info', message: `${data.message} Recorded warnings: ${data.warnings.join(' ')}` }
+        : { type: 'success', message: data.message };
+    await fetchDetails();
 };
 
 const submitCancel = async () => {
     submitting.value = true;
     try {
-        await axios.post(`/portal/api/cargo/cancel/${booking.value.id}`, { reason: cancelReason.value });
+        const res = await axios.post(`/portal/api/cargo/cancel/${booking.value.id}`, { reason: cancelReason.value });
         showCancelModal.value = false;
-        flash.value = { type: 'success', message: 'Booking has been cancelled successfully.' };
+        flash.value = res.data?.pending
+            ? { type: 'info', message: res.data.message } // cancellation awaits a checker (dual control)
+            : { type: 'success', message: 'Booking has been cancelled successfully.' };
         await fetchDetails();
     } catch (e) {
         showCancelModal.value = false;
@@ -473,16 +474,24 @@ const submitCancel = async () => {
     }
 };
 
-const submitStatus = async () => {
+const markLoaded = async () => {
+    const b = booking.value;
+    const loadOn = [b.transport_service?.transport_unit?.name, departure.value !== 'TBD' && departure.value.replace(' @ ', ' ')].filter(Boolean).join(' · ');
+    const ok = await uiStore.confirm({
+        title: `Mark ${b.consignment_number} loaded?`,
+        message: loadOn ? `On ${loadOn}.` : 'On the vessel for this departure.',
+        icon: 'fa-dolly',
+        confirmText: 'Mark loaded',
+        cancelText: 'Not now',
+    });
+    if (!ok) return;
     submitting.value = true;
     try {
-        const res = await axios.patch(`/portal/api/cargo/consignments/${booking.value.id}/status`, { status: statusUpdate.value });
-        showStatusModal.value = false;
-        flash.value = { type: 'success', message: res.data.message || 'Status updated.' };
+        const res = await axios.patch(`/portal/api/cargo/consignments/${booking.value.id}/status`, { status: 'loaded' });
+        flash.value = { type: 'success', message: res.data.message || 'Marked loaded.' };
         await fetchDetails();
     } catch (e) {
-        showStatusModal.value = false;
-        flash.value = { type: 'error', message: errorMessage(e, 'Status update failed.') };
+        flash.value = { type: 'error', message: errorMessage(e, 'Could not mark it loaded.') };
     } finally {
         submitting.value = false;
     }

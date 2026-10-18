@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cargo\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\TransportUnit;
 use App\Services\DualControlService;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class TransportUnitController extends Controller
 {
+    use SubmitsDualControl;
+
     public function index(Request $request)
     {
         $query = TransportUnit::with('cargoCapacities')->latest();
@@ -50,9 +53,8 @@ class TransportUnitController extends Controller
         
         $validated['has_cargo_deck'] = $request->has('has_cargo_deck');
 
-        $dcService->submit('cargo_transport_unit_create', 'cargo_transport_unit', 0, ['after' => $validated]);
-
-        return redirect()->route('admin.cargo.transport-units.index')->with('success', 'Transport Unit creation submitted successfully.');
+        return $this->submitChange($request, 'cargo_transport_unit_create', 'cargo_transport_unit', 0, ['after' => $validated],
+            'Vessel added.', route('admin.cargo.transport-units.index'));
     }
 
     public function show(string $id)
@@ -95,12 +97,8 @@ class TransportUnitController extends Controller
 
         $payloadAfter = array_merge($unit->toArray(), $validated);
 
-        $dcService->submit('cargo_transport_unit_update', 'cargo_transport_unit', $unit->id, [
-            'before' => $payloadBefore,
-            'after' => $payloadAfter,
-        ]);
-
-        return redirect()->route('admin.cargo.transport-units.index')->with('success', 'Transport Unit update submitted successfully.');
+        return $this->submitChange($request, 'cargo_transport_unit_update', 'cargo_transport_unit', $unit->id,
+            ['before' => $payloadBefore, 'after' => $payloadAfter], 'Vessel updated.', route('admin.cargo.transport-units.index'));
     }
 
     public function updateStatus(Request $request, DualControlService $dcService, string $id)
@@ -114,12 +112,8 @@ class TransportUnitController extends Controller
         $payloadBefore = $unit->toArray();
         $payloadAfter = array_merge($unit->toArray(), ['status' => $validated['status']]);
 
-        $dcService->submit('cargo_transport_unit_status_update', 'cargo_transport_unit', $unit->id, [
-            'before' => $payloadBefore,
-            'after' => $payloadAfter,
-        ]);
-
-        return redirect()->back()->with('success', "Transport Unit status update submitted successfully.");
+        return $this->submitChange($request, 'cargo_transport_unit_status_update', 'cargo_transport_unit', $unit->id,
+            ['before' => $payloadBefore, 'after' => $payloadAfter], 'Vessel status updated.');
     }
 
     public function storeSchedule(Request $request, DualControlService $dcService, string $id)

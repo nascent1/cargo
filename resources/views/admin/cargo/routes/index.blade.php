@@ -2,6 +2,8 @@
     <x-slot:title>Routes Management</x-slot:title>
     <x-slot:header>Sailing Routes</x-slot:header>
 
+    @php $statusNeedsApproval = app(\App\Services\DualControlService::class)->requiresDualControl('route_status_update'); @endphp
+
     <div class="flex justify-between items-center mb-6">
         <div>
             <h2 class="text-2xl font-bold text-slate-800">Routes Directory</h2>
@@ -62,6 +64,7 @@
                         <tr class="hover:bg-slate-50/50 transition-colors">
                             <td class="px-6 py-4">
                                 <span class="font-bold text-slate-800">{{ $route->name }}</span>
+                                <x-dual-control.pending-badge subject="route:{{ $route->id }}" />
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center justify-center gap-3">
@@ -108,6 +111,7 @@
                                         <button type="button" 
                                                 @click="$dispatch('open-action-modal', {
                                                     formAction: '{{ route('admin.cargo.routes.update-status', $route) }}',
+                                                    takesEffect: true, needsApproval: @js($statusNeedsApproval),
                                                     formMethod: 'PATCH',
                                                     statusValue: 'inactive',
                                                     title: 'Suspend Route',
@@ -131,6 +135,7 @@
                                         <button type="button" 
                                                 @click="$dispatch('open-action-modal', {
                                                     formAction: '{{ route('admin.cargo.routes.update-status', $route) }}',
+                                                    takesEffect: true, needsApproval: @js($statusNeedsApproval),
                                                     formMethod: 'PATCH',
                                                     statusValue: 'active',
                                                     title: 'Activate Route',

@@ -42,7 +42,7 @@ class CargoPaymentFlowTest extends TestCase
         SystemConfig::setValue('cargo_payment_simulator_enabled', '1');
         SystemConfig::setValue('cargo_ussd_timeout_minutes', '15');
         SystemConfig::setValue('cargo_ussd_max_pushes', '3');
-        SystemConfig::setValue('cargo_payment_sms_enabled', '0');
+        SystemConfig::setValue('sms_enabled', '0'); // no customer SMS from tests
         PaymentMethod::where('slug', 'lipa_namba')->update(['account_number' => '123456', 'account_name' => 'UCLP CARGO', 'is_active' => true]);
     }
 
@@ -316,8 +316,12 @@ class CargoPaymentFlowTest extends TestCase
 
         $this->actingAs($this->officer)->get("/admin/cargo/bookings/{$c->id}/print")->assertStatus(409);
 
-        $this->actingAs($this->officer)
-            ->patch("/admin/cargo/bookings/{$c->id}/status", ['status' => 'loaded'])
+        // Loading and supervisor corrections both refuse an unpaid booking
+        $this->actingAs($this->officer)->withSession(['2fa_verified' => true])
+            ->post("/admin/cargo/bookings/{$c->id}/load")
+            ->assertSessionHas('error');
+        $this->actingAs($this->officer)->withSession(['2fa_verified' => true])
+            ->patch("/admin/cargo/bookings/{$c->id}/status", ['status' => 'loaded', 'reason' => 'Trying to load unpaid cargo'])
             ->assertSessionHas('error');
         $this->assertSame('pending_payment', $c->fresh()->status);
 

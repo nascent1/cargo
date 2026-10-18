@@ -18,7 +18,8 @@ class ForceExchangeRateUpdate
     {
         if (auth()->check() && auth()->user()->hasPermission('exchange_rate:bypass_force_update')) {
             // Check if we are already on a settings route or logging out to avoid redirect loops
-            if (!$request->is('admin/settings*') && !$request->is('logout') && !$request->is('portal*') && !$request->is('admin/password*')) {
+            // Dual control stays open so a checker can approve a pending rate (otherwise nobody could unblock it)
+            if (!$request->is('admin/settings*') && !$request->is('logout') && !$request->is('portal*') && !$request->is('admin/password*') && !$request->is('admin/dual-control*')) {
                 
                 $lastUpdatedStr = \App\Models\SystemConfig::getValue('exchange_rate_last_updated', '2000-01-01');
                 

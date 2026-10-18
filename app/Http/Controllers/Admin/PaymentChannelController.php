@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Gateways\Payment\Push\PushGatewayManager;
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
-use App\Models\IntegrationConfig;
+use App\Services\DualControl\DualControlException;
+use App\Services\DualControl\Handlers\PaymentChannelHandler;
+use App\Services\DualControlService;
 use App\Models\PaymentMethod;
 use App\Models\SystemConfig;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -17,11 +19,12 @@ use Illuminate\Validation\Rule;
  */
 class PaymentChannelController extends Controller
 {
+    use SubmitsDualControl;
+
     private const RULES = [
         'cargo_ussd_timeout_minutes'      => 'required|integer|min:2|max:120',
         'cargo_lipa_timeout_minutes'      => 'required|integer|min:5|max:1440',
         'cargo_ussd_max_pushes'           => 'required|integer|min:1|max:10',
-        'cargo_payment_sms_enabled'       => 'boolean',
         'cargo_payment_simulator_enabled' => 'boolean',
     ];
 
@@ -67,9 +70,10 @@ class PaymentChannelController extends Controller
             return back()->with('error', "Choose how {$paymentMethod->name} collects payment before activating it.");
         }
 
-        $paymentMethod->update($data);
+        $before = $paymentMethod->only(PaymentChannelHandler::METHOD_FIELDS);
 
-        return back()->with('success', "{$paymentMethod->name} updated.");
+        return $this->submitChange($request, 'payment_method_update', 'payment_method', $paymentMethod->id,
+            ['before' => $before, 'after' => array_merge($before, $data)], "{$paymentMethod->name} updated.");
     }
 
     /**
@@ -83,17 +87,14 @@ class PaymentChannelController extends Controller
             return back()->with('error', 'Choose how the new channel collects payment before activating it.');
         }
 
-        $base = Str::slug($data['name'], '_');
-        $slug = $base;
-        for ($i = 2; PaymentMethod::where('slug', $slug)->exists(); $i++) {
-            $slug = "{$base}_{$i}";
-        }
-
-        PaymentMethod::create($data + ['slug' => $slug]);
-
-        return back()->with('success', "{$data['name']} added.");
+        // The slug is chosen when the channel is created (PaymentChannelHandler)
+        return $this->submitChange($request, 'payment_method_create', 'payment_method', 0, ['after' => $data], "{$data['name']} added.");
     }
 
+    /**
+     * Provider credentials through dual control (payment_provider_update). Secrets are sealed (encrypted) in the
+     * request and never shown; a secret left blank keeps the stored one.
+     */
     public function updateProvider(Request $request, string $driver)
     {
         abort_unless(isset(PushGatewayManager::DRIVERS[$driver]), 404);
@@ -110,56 +111,72 @@ class PaymentChannelController extends Controller
         }
         $validated = $request->validate($rules);
 
-        $config = (new PushGatewayManager())->integration($driver) ?? new IntegrationConfig([
-            'code' => strtoupper($driver), 'name' => $meta['label'], 'provider' => $driver,
-            'channel' => 'payment', 'is_default' => false, 'sort_order' => 100, 'currency' => 'TZS', 'country_code' => 'TZ',
-        ]);
-
-        $extra = $config->extra_credentials ?? [];
+        $config = (new PushGatewayManager())->integration($driver);
+        $fields = [];
+        $sealed = [];
+        $before = ['environment' => $config?->environment, 'sandbox_url' => $config?->sandbox_url, 'production_url' => $config?->production_url,
+            'callback_url' => $config?->callback_url, 'is_active' => (bool) $config?->is_active];
         foreach ($meta['fields'] as $field => $f) {
             $value = $validated[$this->inputName($field)] ?? null;
-            if (($f['secret'] ?? false) && blank($value)) {
-                continue; // blank secret = keep the stored one
-            }
-            if (str_starts_with($field, 'extra.')) {
-                $extra[substr($field, 6)] = $value;
+            $current = $config ? PushGatewayManager::fieldValue($config, $field) : null;
+            if ($f['secret'] ?? false) {
+                $before["secret.{$field}"] = filled($current) ? 'set' : 'not set';
+                if (blank($value)) {
+                    continue; // blank secret = keep the stored one
+                }
+                $sealed[] = "fields.{$field}";
             } else {
-                $config->{$field} = $value;
+                $before["fields.{$field}"] = $current;
             }
-        }
-        // Secret token in the callback URL authenticates provider callbacks
-        $extra['callback_token'] ??= Str::random(40);
-
-        $config->fill([
-            'environment'    => $validated['environment'],
-            'sandbox_url'    => $validated['sandbox_url'] ?? null,
-            'production_url' => $validated['production_url'] ?? null,
-            'base_url'       => $validated['sandbox_url'] ?? $config->base_url,
-            'callback_url'   => $validated['callback_url'] ?? null,
-            'is_active'      => $request->boolean('is_active'),
-        ]);
-        $config->extra_credentials = $extra;
-        $config->save();
-
-        if ($config->is_active && !(new PushGatewayManager())->isConfigured($driver)) {
-            $config->update(['is_active' => false]);
-
-            return back()->with('error', "{$meta['label']} saved but left inactive: fill in every required field and the {$config->environment} URL.");
+            data_set($fields, $field, $value);
         }
 
-        return back()->with('success', "{$meta['label']} credentials saved" . ($config->is_active ? ' and activated.' : '.'));
+        $dualControl = app(DualControlService::class);
+        try {
+            $dcRequest = $dualControl->submit('payment_provider_update', 'integration_config', $config?->id ?? 0, [
+                'before' => $before,
+                'after' => [
+                    'driver' => $driver,
+                    'environment' => $validated['environment'],
+                    'sandbox_url' => $validated['sandbox_url'] ?? null,
+                    'production_url' => $validated['production_url'] ?? null,
+                    'callback_url' => $validated['callback_url'] ?? null,
+                    'is_active' => $request->boolean('is_active'),
+                    'fields' => $fields,
+                ],
+            ], [
+                'sealed' => $sealed,
+                'subject_key' => "payment_provider:{$driver}",
+                'commence_at' => $this->takesEffect($request, 'payment_provider_update'),
+            ]);
+        } catch (DualControlException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        if ($dcRequest->status !== 'approved') {
+            return back()->with('success', $dualControl->outcomeMessage($dcRequest, ''));
+        }
+
+        $saved = (new PushGatewayManager())->integration($driver);
+        if ($request->boolean('is_active') && !$saved?->is_active) {
+            return back()->with('error', "{$meta['label']} saved but left inactive: fill in every required field and the {$saved?->environment} URL.");
+        }
+
+        return back()->with('success', "{$meta['label']} credentials saved" . ($saved?->is_active ? ' and activated.' : '.'));
     }
 
     public function updateSettings(Request $request)
     {
         $validated = $request->validate(self::RULES);
 
+        $after = [];
         foreach (self::RULES as $key => $rule) {
-            $value = $rule === 'boolean' ? ($request->boolean($key) ? '1' : '0') : (string) $validated[$key];
-            SystemConfig::setValue($key, $value);
+            $after[$key] = $rule === 'boolean' ? ($request->boolean($key) ? '1' : '0') : (string) $validated[$key];
         }
+        $before = collect(array_keys(self::RULES))->mapWithKeys(fn ($k) => [$k => SystemConfig::getValue($k)])->all();
 
-        return back()->with('success', 'Payment rules updated.');
+        return $this->submitChange($request, 'payment_rules_update', 'system_config', 0, ['before' => $before, 'after' => $after],
+            'Payment rules updated.', null, ['subject_key' => 'payment_rules']);
     }
 
     private function validateMethod(Request $request): array

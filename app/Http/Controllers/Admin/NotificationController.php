@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\NotificationTemplate;
 use App\Models\NotificationLog;
@@ -10,6 +11,8 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
+    use SubmitsDualControl;
+
     // ── Templates ───────────────────────────────────────────
 
     public function templates(Request $request)
@@ -37,18 +40,25 @@ class NotificationController extends Controller
             'body'    => 'required|string',
         ]);
 
-        NotificationTemplate::updateOrCreate(
-            ['event' => $validated['event'], 'channel' => $validated['channel'], 'locale' => $validated['locale']],
-            ['subject' => $validated['subject'] ?? null, 'body' => $validated['body'], 'is_active' => true]
-        );
+        // Through dual control (notification_template_save): adds the template or replaces the event + channel + locale one
+        $existing = NotificationTemplate::where('event', $validated['event'])->where('channel', $validated['channel'])->where('locale', $validated['locale'])->first();
 
-        return redirect()->route('admin.notifications.templates')->with('success', 'Template saved.');
+        return $this->submitChange($request, 'notification_template_save', 'notification_template', $existing?->id ?? 0, [
+            'before' => $existing?->only(['event', 'channel', 'locale', 'subject', 'body', 'is_active']),
+            'after' => ['subject' => $validated['subject'] ?? null, 'body' => $validated['body'], 'is_active' => true] + $validated,
+        ], 'Template saved.', route('admin.notifications.templates'), [
+            'subject_key' => "notification_template:{$validated['event']}:{$validated['channel']}:{$validated['locale']}",
+        ]);
     }
 
-    public function toggleTemplate(NotificationTemplate $template)
+    public function toggleTemplate(Request $request, NotificationTemplate $template)
     {
-        $template->update(['is_active' => !$template->is_active]);
-        return redirect()->back()->with('success', 'Template toggled.');
+        return $this->submitChange($request, 'notification_template_toggle', 'notification_template', $template->id, [
+            'before' => ['is_active' => $template->is_active],
+            'after' => ['is_active' => !$template->is_active],
+        ], $template->is_active ? 'Template switched off.' : 'Template switched on.', null, [
+            'subject_key' => "notification_template:{$template->event}:{$template->channel}:{$template->locale}",
+        ]);
     }
 
     // ── Delivery Logs ───────────────────────────────────────

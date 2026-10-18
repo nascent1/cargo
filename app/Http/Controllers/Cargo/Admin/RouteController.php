@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cargo\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\Route;
 use App\Models\Station;
@@ -10,6 +11,8 @@ use Illuminate\Http\Request;
 
 class RouteController extends Controller
 {
+    use SubmitsDualControl;
+
     public function index(Request $request)
     {
         $query = Route::with(['origin', 'destination'])->latest();
@@ -47,12 +50,8 @@ class RouteController extends Controller
         $origin = Station::findOrFail($validated['origin_station_id']);
         $destination = Station::findOrFail($validated['destination_station_id']);
 
-        $validated['name'] = $origin->name . ' - ' . $destination->name;
-        $validated['code'] = $origin->code . '-' . $destination->code;
-
-        $dcService->submit('route_create', 'route', 0, ['after' => $validated]);
-
-        return redirect()->route('admin.cargo.routes.index')->with('success', 'Route creation submitted successfully.');
+        return $this->submitChange($request, 'route_create', 'route', 0, ['after' => $this->routeAttributes($validated, $origin, $destination)],
+            'Route created.', route('admin.cargo.routes.index'));
     }
 
     public function show(string $id)
@@ -60,7 +59,8 @@ class RouteController extends Controller
         $route = Route::findOrFail($id);
         $route->load('agents');
         $allAgents = \App\Models\Agent::where('is_active', true)->orderBy('agency_name')->get();
-        return view('admin.cargo.routes.show', compact('route', 'allAgents'));
+        $priceCard = app(\App\Services\Cargo\CargoFareService::class)->routeRateCard($route);
+        return view('admin.cargo.routes.show', compact('route', 'allAgents', 'priceCard'));
     }
 
     public function edit(string $id)
@@ -83,18 +83,11 @@ class RouteController extends Controller
         $origin = Station::findOrFail($validated['origin_station_id']);
         $destination = Station::findOrFail($validated['destination_station_id']);
 
-        $validated['name'] = $origin->name . ' - ' . $destination->name;
-        $validated['code'] = $origin->code . '-' . $destination->code;
-
         $payloadBefore = $route->toArray();
-        $payloadAfter = array_merge($route->toArray(), $validated);
+        $payloadAfter = array_merge($payloadBefore, $this->routeAttributes($validated, $origin, $destination));
 
-        $dcService->submit('route_update', 'route', $route->id, [
-            'before' => $payloadBefore,
-            'after' => $payloadAfter,
-        ]);
-
-        return redirect()->route('admin.cargo.routes.index')->with('success', 'Route update submitted successfully.');
+        return $this->submitChange($request, 'route_update', 'route', $route->id,
+            ['before' => $payloadBefore, 'after' => $payloadAfter], 'Route updated.', route('admin.cargo.routes.index'));
     }
 
     public function destroy(string $id)
@@ -113,13 +106,22 @@ class RouteController extends Controller
         $payloadBefore = $route->toArray();
         $payloadAfter = array_merge($route->toArray(), ['status' => $validated['status']]);
 
-        $dcService->submit('route_status_update', 'route', $route->id, [
-            'before' => $payloadBefore,
-            'after' => $payloadAfter,
-        ]);
+        return $this->submitChange($request, 'route_status_update', 'route', $route->id,
+            ['before' => $payloadBefore, 'after' => $payloadAfter], $validated['status'] === 'active' ? 'Route activated.' : 'Route suspended.');
+    }
 
-        $action = $validated['status'] === 'active' ? 'activation' : 'suspension';
-        return redirect()->back()->with('success', "Route {$action} submitted successfully.");
+    /**
+     * The form's station fields as the route's columns (the route stores them as origin/destination port ids).
+     */
+    private function routeAttributes(array $validated, Station $origin, Station $destination): array
+    {
+        return [
+            'origin_port_id' => $origin->id,
+            'destination_port_id' => $destination->id,
+            'distance_nm' => $validated['distance_nm'] ?? null,
+            'name' => $origin->name . ' - ' . $destination->name,
+            'code' => $origin->code . '-' . $destination->code,
+        ];
     }
 
     public function updateAgents(Request $request, DualControlService $dcService, string $id)
@@ -141,16 +143,9 @@ class RouteController extends Controller
             }
         }
 
-        if ($dcService->requiresDualControl('route_agents_update')) {
-            $dcReq = $dcService->submit('route_agents_update', 'route', $route->id, [
-                'before' => ['agents' => $route->agents->mapWithKeys(fn($a) => [$a->id => ['status' => $a->pivot->status]])->toArray()],
-                'after'  => ['agents' => $syncData],
-            ]);
-            return redirect()->back()->with('success', "Assigned agents update requires Maker-Checker approval (Request #{$dcReq->id} submitted).");
-        }
-
-        $route->agents()->sync($syncData);
-
-        return redirect()->back()->with('success', 'Assigned agents updated successfully.');
+        return $this->submitChange($request, 'route_agents_update', 'route', $route->id, [
+            'before' => ['agents' => $route->agents->mapWithKeys(fn ($a) => [$a->id => ['status' => $a->pivot->status]])->toArray()],
+            'after' => ['agents' => $syncData],
+        ], 'Assigned agents updated.');
     }
 }

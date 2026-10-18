@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    use SubmitsDualControl;
+
     protected DualControlService $dcService;
 
     public function __construct(DualControlService $dcService)
@@ -97,15 +100,13 @@ class UserController extends Controller
         return redirect()->back()->with('success', 'Roles update submitted for authorization.');
     }
 
-    public function reset2fa(User $user)
+    // Through dual control (user_2fa_reset)
+    public function reset2fa(Request $request, User $user)
     {
-        $user->update([
-            'mfa_enabled' => false,
-            'mfa_secret' => null,
-            'two_factor_confirmed_at' => null
-        ]);
-        
-        return back()->with('success', "2FA has been reset for {$user->full_name}. They can now set it up again upon their next login.");
+        return $this->submitChange($request, 'user_2fa_reset', 'user', $user->id, [
+            'before' => ['mfa_enabled' => (bool) $user->mfa_enabled],
+            'after' => ['mfa_enabled' => false, 'user' => $user->full_name],
+        ], "2FA has been reset for {$user->full_name}. They can now set it up again upon their next login.", null, ['subject_key' => "user:{$user->id}:security"]);
     }
 
     public function resetPassword(Request $request, User $user)
@@ -114,23 +115,13 @@ class UserController extends Controller
             'password' => ['required', \Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
-        $user->update([
-            'password' => Hash::make($validated['password']),
-            'password_changed_at' => null, // Force change on next login
+        // Through dual control (user_password_reset). The password is sealed (encrypted) in the request;
+        // the handler hashes it, forces a change on next login, audits and emails it.
+        return $this->submitChange($request, 'user_password_reset', 'user', $user->id, [
+            'after' => ['user' => $user->full_name, 'password' => $validated['password']],
+        ], "Password has been reset for {$user->full_name}. They will be forced to change it upon their next login.", null, [
+            'sealed' => ['password'],
+            'subject_key' => "user:{$user->id}:security",
         ]);
-
-        AuditLog::createEntry(
-            auth()->id(),
-            'admin_reset_password',
-            'user',
-            $user->id,
-            null,
-            ['password_changed_at' => null],
-            $request->ip()
-        );
-
-        $user->notify(new \App\Notifications\AdminPasswordResetNotification($validated['password']));
-
-        return back()->with('success', "Password has been reset for {$user->full_name}. They will be forced to change it upon their next login.");
     }
 }

@@ -276,6 +276,7 @@ async function confirmLipa() {
   const data = await run(async () => (await axios.post(`${props.apiBase}/payments/${payment.value.uuid}/confirm`, {
     reference: reference.value, payer_msisdn: lipaPayer.value || null,
   })).data, 'Could not confirm the payment.');
+  if (data?.pending) { notice.value = data.message; return; } // confirmation awaits a checker (dual control)
   if (data) update(data);
 }
 
@@ -286,6 +287,7 @@ async function smsInstructions() {
 
 async function cancelBooking() {
   const ok = await run(async () => (await axios.post(`${props.apiBase}/cancel/${props.consignmentId}`, { reason: cancelReason.value })).data, 'Cancellation failed.');
+  if (ok?.pending) { notice.value = ok.message; confirmingCancel.value = false; return; } // awaits a checker
   if (ok) { clearTimeout(pollTimer); emit('cancelled'); }
 }
 

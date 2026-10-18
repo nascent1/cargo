@@ -1,6 +1,15 @@
 <div>
     <!-- Route Trips Table -->
     <div class="mb-8">
+        @if (session()->has('error'))
+            <div class="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
+                <i class="fas fa-circle-exclamation text-red-500 mt-0.5"></i>
+                <p class="flex-1 text-sm font-medium text-red-800">{{ session('error') }}</p>
+            </div>
+        @endif
+        @if (session()->has('success'))
+            <div class="mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm font-medium text-emerald-800"><i class="fas fa-check-circle mr-1"></i>{{ session('success') }}</div>
+        @endif
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-slate-800">Trips Management</h3>
             @php $canUpdateRoute = auth()->user()->hasPermission('route:update'); @endphp
@@ -41,7 +50,15 @@
                                 <button wire:click="editTrip({{ $trip->id }})" class="text-slate-400 hover:text-blue-600 transition-colors" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button wire:click="deleteTrip({{ $trip->id }})" wire:confirm="Are you sure you want to request deletion of this trip?" class="text-rose-400 hover:text-rose-600 transition-colors" title="Delete">
+                                @php $approveDelete ??= app(\App\Services\DualControlService::class)->requiresDualControl('trip_delete'); @endphp
+                                <button type="button"
+                                    x-on:click="if (await confirmDialog(@js([
+                                        'title' => 'Delete the ' . \Carbon\Carbon::parse($trip->departure_time)->format('H:i') . ' trip?',
+                                        'message' => $approveDelete ? 'A checker must approve it first.' : 'It is removed from this route.',
+                                        'tone' => 'danger',
+                                        'confirmText' => $approveDelete ? 'Request deletion' : 'Delete',
+                                    ]))) $wire.deleteTrip({{ $trip->id }})"
+                                    class="text-rose-400 hover:text-rose-600 transition-colors" title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                                 @else
@@ -109,6 +126,7 @@
                         </div>
                     </div>
 
+                    <x-dual-control.takes-effect :op="$trip_id ? 'trip_update' : 'trip_create'" wire class="mt-4" />
                 </div>
 
                 <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
@@ -116,7 +134,7 @@
                         Close
                     </button>
                     <button type="button" wire:click="saveTrip" class="px-5 py-2.5 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-xl shadow-sm transition-colors flex items-center gap-2">
-                        <i class="fas fa-check"></i> Submit for Approval
+                        <i class="fas fa-check"></i> Save
                     </button>
                 </div>
             </div>

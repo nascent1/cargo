@@ -1,5 +1,11 @@
 <div>
     <div class="mb-8">
+        @if (session()->has('error'))
+            <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
+                <i class="fas fa-circle-exclamation text-red-500 mt-0.5"></i>
+                <p class="flex-1 text-sm font-medium text-red-800">{{ session('error') }}</p>
+            </div>
+        @endif
         @if (session()->has('success'))
             <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
                 <i class="fas fa-check-circle text-emerald-500 mt-0.5"></i>
@@ -340,6 +346,10 @@
                         </div>
                         @error('frequency_pattern') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                     </div>
+                </div>
+
+                <div class="px-6 pb-4">
+                    <x-dual-control.takes-effect :op="$schedule_id ? 'schedule_update' : 'schedule_create'" wire />
                 </div>
 
                 <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">

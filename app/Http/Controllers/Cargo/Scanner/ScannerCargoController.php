@@ -53,7 +53,9 @@ class ScannerCargoController extends Controller
     }
 
     /**
-     * Update status (e.g. Load, Offload, Deliver)
+     * Scan actions. Loading follows the port rules (paid, vessel not yet left; scanning every item
+     * loads the booking); "offloaded" marks an item off the vessel at the destination. In transit
+     * and arrived come from the journey; collection needs the hand-over with a confirmed mobile.
      */
     public function updateStatus(Request $request)
     {
@@ -61,29 +63,53 @@ class ScannerCargoController extends Controller
             'type' => 'required|in:item,consignment',
             'id' => 'required|integer',
             'status' => ['required', Rule::in(['accepted', 'loaded', 'in_transit', 'offloaded', 'delivered', 'collected', 'returned'])],
-            'location' => 'nullable|string',
-            'description' => 'nullable|string'
+            'location' => 'nullable|string|max:100',
+            'description' => 'nullable|string|max:255',
         ]);
 
+        $status = $request->status;
+        $permission = ['loaded' => 'cargo-load', 'offloaded' => 'cargo-offload'][$status] ?? null;
+        if (!$permission) {
+            return response()->json(['error' => match ($status) {
+                'in_transit', 'delivered' => 'In transit and arrived are set when the journey departs or arrives (Operations › Journeys).',
+                'collected' => 'Collection needs the hand-over with the collector\'s ID and a confirmed mobile.',
+                default => 'This scan action is not used.',
+            }], 422);
+        }
+        if (!$request->user()->hasPermission($permission)) {
+            return response()->json(['error' => 'You do not have permission for this scan action.'], 403);
+        }
+
+        $operations = app(\App\Services\Cargo\CargoOperationsService::class);
+        $userId = $request->user()->id;
+
         try {
-            $userId = auth()->id();
-            
-            if ($request->type === 'item') {
-                $item = CargoItem::findOrFail($request->id);
-                if ($item->consignment?->status === 'pending_payment') {
-                    return response()->json(['error' => 'Payment pending — this cargo cannot be processed until the booking is paid.'], 422);
-                }
-                $this->trackingSvc->logItemEvent($item, $request->status, $request->description ?? "Status updated to {$request->status}", $userId, $request->location);
-            } else {
+            if ($request->type === 'consignment') {
                 $consignment = Consignment::findOrFail($request->id);
-                if ($consignment->status === 'pending_payment') {
-                    return response()->json(['error' => 'Payment pending — this cargo cannot be processed until the booking is paid.'], 422);
+                if ($status === 'offloaded') {
+                    return response()->json(['error' => 'Scan the items to mark them offloaded.'], 422);
                 }
-                $this->trackingSvc->logEvent($consignment, $request->status, $request->description ?? "Status updated to {$request->status}", $userId, $request->location);
+                $operations->load($consignment, $userId, 'scanned');
+
+                return response()->json(['message' => "{$consignment->consignment_number} marked loaded."]);
             }
 
-            return response()->json(['message' => 'Status updated successfully']);
-        } catch (\Exception $e) {
+            $item = CargoItem::with('consignment')->findOrFail($request->id);
+            if ($status === 'loaded') {
+                $bookingLoaded = $operations->loadItem($item, $userId);
+
+                return response()->json(['message' => $bookingLoaded
+                    ? "Item loaded — all items of {$item->consignment->consignment_number} are on board."
+                    : 'Item loaded.', 'booking_loaded' => $bookingLoaded]);
+            }
+
+            if (!in_array($item->consignment?->status, ['in_transit', 'delivered', 'unclaimed'], true)) {
+                return response()->json(['error' => 'Only cargo that has travelled can be offloaded.'], 422);
+            }
+            $this->trackingSvc->logItemEvent($item, 'offloaded', $request->description ?? 'Item offloaded', $userId, $request->location);
+
+            return response()->json(['message' => 'Item offloaded.']);
+        } catch (\DomainException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
     }

@@ -102,7 +102,11 @@
                                             class="text-surface-500 hover:text-brand-600 transition-colors p-1" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <form action="{{ route('admin.settings.lookups.destroy', ['table' => $activeTab, 'id' => $item->id]) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this lookup item?')">
+                                    @php $approveDelete ??= app(\App\Services\DualControlService::class)->requiresDualControl('lookup_delete'); @endphp
+                                    <form action="{{ route('admin.settings.lookups.destroy', ['table' => $activeTab, 'id' => $item->id]) }}" method="POST" class="inline"
+                                        data-confirm="{{ $approveDelete ? 'A checker must approve it first.' : '' }}"
+                                        data-confirm-title="Delete “{{ data_get($item, 'label') ?? data_get($item, 'name') ?? data_get($item, 'code') ?? 'this item' }}”?"
+                                        data-confirm-button="{{ $approveDelete ? 'Request deletion' : 'Delete' }}" data-confirm-tone="danger">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-surface-400 hover:text-rose-600 transition-colors p-1" title="Delete">
@@ -191,6 +195,7 @@
                             @endif
                         </div>
 
+                        <x-dual-control.takes-effect op="lookup_update" class="mb-3" />
                         <div class="px-6 py-4 bg-white flex justify-end gap-3">
                             <button type="button" @click="openAddModal = false" class="px-4 py-2 rounded-xl border border-surface-300 text-surface-700 text-sm font-medium hover:bg-surface-50 transition-colors">Cancel</button>
                             <button type="submit" class="px-5 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium shadow-sm transition-all">Save Lookup Item</button>

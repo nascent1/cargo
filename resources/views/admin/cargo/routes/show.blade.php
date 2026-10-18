@@ -2,6 +2,8 @@
     <x-slot:title>Route Profile: {{ $route->name }}</x-slot:title>
     <x-slot:header>Route Management</x-slot:header>
 
+    @include('admin.cargo.partials.ui')
+
     <div class="mb-6 flex items-center justify-between">
         <div class="flex items-center gap-4">
             <a href="{{ route('admin.cargo.routes.index') }}" class="text-slate-400 hover:text-slate-600 transition-colors">
@@ -9,6 +11,7 @@
             </a>
             <div>
                 <h2 class="text-2xl font-bold text-slate-800">{{ $route->name }}</h2>
+                <x-dual-control.pending-badge subject="route:{{ $route->id }}" />
                 <p class="text-slate-500 text-sm">Code: {{ $route->code }} &bull; Distance: {{ $route->distance_nm }} NM</p>
             </div>
         </div>
@@ -66,7 +69,7 @@
 
             <!-- Route Prices (Livewire) -->
             <div x-show="activeTab === 'prices'" x-cloak>
-                <livewire:admin.route-pricing-manager :route="$route" />
+                @include('admin.cargo.partials.route-rate-card', ['route' => $route, 'priceCard' => $priceCard])
             </div>
 
             <!-- Route Frequency (Livewire) -->
@@ -127,6 +130,7 @@
                             </div>
                         @endforeach
                     </div>
+                    <x-dual-control.takes-effect op="route_agents_update" />
                     <div class="flex justify-end pt-4 border-t border-slate-100">
                         <button type="submit" class="px-6 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition flex items-center gap-2">
                             <i class="fas fa-save"></i> Save Agent Authorizations
@@ -136,4 +140,5 @@
             </div>
         </div>
     </div>
+    @include('admin.cargo.partials.fare-editor')
 </x-layouts.admin>

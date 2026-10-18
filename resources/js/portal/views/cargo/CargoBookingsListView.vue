@@ -1,166 +1,131 @@
 <template>
-  <div class="min-h-screen bg-slate-50">
-
-    <!-- Header -->
-    <div class="bg-white border-b border-slate-200 px-4 py-4 sticky top-0 z-10 shadow-sm">
-      <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
-        <div>
-          <h1 class="text-lg font-extrabold text-slate-900">My Consignments</h1>
-          <p class="text-xs text-slate-400 mt-0.5">Track and manage your cargo shipments</p>
-        </div>
-        <router-link to="/cargo-booking"
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-brand-200">
-          <i class="fas fa-plus text-xs"></i> New Booking
-        </router-link>
+  <div class="space-y-4 max-w-7xl">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900">Bookings</h1>
+        <p class="text-sm text-slate-600">{{ authStore.isAgent || authStore.isAssociate ? 'The bookings you made.' : 'Search by booking number, phone or name.' }}</p>
       </div>
     </div>
 
-    <div class="max-w-5xl mx-auto px-4 py-5 space-y-4">
+    <!-- Filters (kept in the address bar, so links from the dashboard land filtered) -->
+    <form class="ui-card px-4 py-3 flex flex-col sm:flex-row sm:items-end gap-3" role="search" @submit.prevent="apply">
+      <div class="flex-1 relative">
+        <label class="ui-label" for="bk-search">Search</label>
+        <i class="fas fa-magnifying-glass absolute left-3 bottom-3 text-slate-400 text-sm"></i>
+        <input id="bk-search" v-model="filters.search" type="search" class="ui-field pl-9" placeholder="Booking number, phone (any format) or name">
+      </div>
+      <div class="sm:w-52">
+        <label class="ui-label" for="bk-status">Status</label>
+        <select id="bk-status" v-model="filters.status" class="ui-field" @change="apply">
+          <option value="">All statuses</option>
+          <option v-for="(s, key) in STATUS" :key="key" :value="key">{{ s.label }}</option>
+        </select>
+      </div>
+      <label v-if="!(authStore.isAgent || authStore.isAssociate)" class="inline-flex items-center gap-2 h-10 text-sm text-slate-700 cursor-pointer select-none">
+        <input v-model="filters.mine" type="checkbox" class="h-4 w-4 rounded border-slate-400 accent-brand-600" @change="apply"> Only my bookings
+      </label>
+      <button type="submit" class="ui-btn"><i class="fas fa-magnifying-glass text-xs"></i> Search</button>
+    </form>
 
-      <!-- Search & Filter -->
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <div class="relative flex-1">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <i class="fas fa-search text-slate-400 text-sm"></i>
-            </div>
-            <input type="text" v-model="search" @keyup.enter="fetchBookings"
-              placeholder="Search by consignment number, sender or receiver..."
-              class="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 outline-none transition-all bg-slate-50 focus:bg-white" />
-          </div>
-          <select v-model="statusFilter" @change="fetchBookings"
-            class="text-sm rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 outline-none transition-all bg-slate-50 text-slate-700 min-w-[160px]">
-            <option value="">All Statuses</option>
-            <option value="pending_payment">Awaiting Payment</option>
-            <option value="booked">Booked</option>
-            <option value="loaded">Loaded</option>
-            <option value="in_transit">In Transit</option>
-            <option value="delivered">Delivered</option>
-            <option value="collected">Collected</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <button @click="fetchBookings"
-            class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-xl transition-colors">
-            <i class="fas fa-filter text-xs"></i> Filter
-          </button>
+    <div class="ui-card overflow-hidden">
+      <div v-if="loading" class="py-12 text-center text-sm text-slate-500"><i class="fas fa-circle-notch fa-spin text-brand-500 mr-2"></i>Loading bookings…</div>
+      <div v-else-if="error" class="py-12 text-center text-sm text-red-700"><i class="fas fa-circle-exclamation mr-1"></i>{{ error }}</div>
+      <div v-else-if="!bookings.length" class="py-12 text-center">
+        <i class="fas fa-box-open text-3xl text-slate-300 block mb-2"></i>
+        <p class="text-sm font-semibold text-slate-700">No bookings found</p>
+        <p class="text-xs text-slate-500 mt-1">Try another search or clear the filters.</p>
+      </div>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="th">Booking</th><th class="th">Booked</th><th class="th">Sender → Receiver</th><th class="th">Route</th>
+              <th class="th">Status</th><th class="th">Payment</th><th class="th th-r">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="b in bookings" :key="b.id" class="hover:bg-slate-50 cursor-pointer" @click="$router.push(`/cargo-bookings/${b.id}`)">
+              <td class="td whitespace-nowrap">
+                <router-link :to="`/cargo-bookings/${b.id}`" class="font-mono font-semibold text-brand-700 hover:underline" @click.stop>{{ b.consignment_number }}</router-link>
+              </td>
+              <td class="td text-slate-600 whitespace-nowrap">{{ dateTime(b.created_at) }}</td>
+              <td class="td">
+                <div class="font-medium text-slate-800">{{ b.sender_name }}</div>
+                <div class="text-xs text-slate-500"><i class="fas fa-arrow-right text-[9px] mr-1"></i>{{ b.receiver_name }}</div>
+              </td>
+              <td class="td text-slate-600">{{ b.route?.name || b.transport_service?.route?.name || '—' }}</td>
+              <td class="td"><StatusBadge kind="status" :value="b.status" /></td>
+              <td class="td"><StatusBadge kind="payment" :value="b.payment_status" /></td>
+              <td class="td text-right font-semibold tabular-nums whitespace-nowrap">{{ amount(b) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="meta.last_page > 1" class="px-4 py-3 border-t border-slate-100 flex items-center justify-between gap-3 text-sm">
+        <span class="text-slate-600">Page {{ meta.current_page }} of {{ meta.last_page }} · {{ num(meta.total) }} bookings</span>
+        <div class="flex gap-2">
+          <button type="button" class="ui-btn ui-btn-sm" :disabled="meta.current_page <= 1" @click="go(meta.current_page - 1)"><i class="fas fa-chevron-left text-[10px]"></i> Previous</button>
+          <button type="button" class="ui-btn ui-btn-sm" :disabled="meta.current_page >= meta.last_page" @click="go(meta.current_page + 1)">Next <i class="fas fa-chevron-right text-[10px]"></i></button>
         </div>
       </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center text-slate-400">
-        <i class="fas fa-circle-notch fa-spin text-2xl text-brand-400 mb-3 block"></i>
-        <p class="text-sm">Loading your consignments...</p>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else-if="bookings.length === 0"
-        class="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
-        <i class="fas fa-box-open text-4xl text-slate-300 mb-4 block"></i>
-        <p class="text-slate-700 font-semibold">No consignments found</p>
-        <p class="text-sm text-slate-400 mt-1">Try adjusting your search filters or create a new booking.</p>
-        <router-link to="/cargo-booking"
-          class="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-colors">
-          <i class="fas fa-plus text-xs"></i> New Booking
-        </router-link>
-      </div>
-
-      <!-- Table -->
-      <div v-else class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-100">
-                <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Consignment</th>
-                <th class="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                <th class="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Sender → Receiver</th>
-                <th class="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Route</th>
-                <th class="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                <th class="text-right px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Amount</th>
-                <th class="text-center px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="booking in bookings" :key="booking.id"
-                class="border-b border-slate-50 hover:bg-brand-50/30 transition-colors">
-                <td class="px-5 py-3.5">
-                  <router-link :to="`/cargo-bookings/${booking.id}`"
-                    class="font-mono text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 px-2 py-0.5 rounded transition-colors">
-                    {{ booking.consignment_number }}
-                  </router-link>
-                </td>
-                <td class="px-4 py-3.5 text-xs text-slate-500">{{ formatDate(booking.created_at) }}</td>
-                <td class="px-4 py-3.5">
-                  <div class="font-medium text-slate-800 text-sm">{{ booking.sender_name }}</div>
-                  <div class="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                    <i class="fas fa-arrow-right text-[9px]"></i> {{ booking.receiver_name }}
-                  </div>
-                </td>
-                <td class="px-4 py-3.5 text-xs text-slate-500">{{ booking.route?.name || '—' }}</td>
-                <td class="px-4 py-3.5">
-                  <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border', statusCls(booking.status)]">
-                    {{ statusLabel(booking.status) }}
-                  </span>
-                </td>
-                <td class="px-5 py-3.5 text-right font-semibold tabular-nums text-slate-800">
-                  {{ booking.total_amount_usd > 0
-                    ? booking.total_amount_usd.toLocaleString() + ' USD'
-                    : Number(booking.total_amount_tzs).toLocaleString() + ' TZS' }}
-                </td>
-                <td class="px-4 py-3.5 text-center">
-                  <router-link :to="`/cargo-bookings/${booking.id}`"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors border border-brand-100">
-                    <i class="fas fa-eye text-xs"></i> View
-                  </router-link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, reactive, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
-import moment from 'moment';
+import { useAuthStore } from '../../stores/auth';
+import { num, money, dateTime, apiError } from '../../utils/cargoUi';
+import StatusBadge from '../../components/ui/StatusBadge.vue';
 
-const bookings     = ref([]);
-const loading      = ref(false);
-const search       = ref('');
-const statusFilter = ref('');
+const STATUS = window.CargoUiConfig?.status || {};
+const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
 
-const STATUS = {
-    pending_payment: { label: 'Awaiting Payment', cls: 'bg-orange-100 text-orange-700 border-orange-200' },
-    booked:     { label: 'Booked',     cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-    loaded:     { label: 'Loaded',     cls: 'bg-blue-100 text-blue-700 border-blue-200' },
-    in_transit: { label: 'In Transit', cls: 'bg-violet-100 text-violet-700 border-violet-200' },
-    delivered:  { label: 'Delivered',  cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    collected:  { label: 'Collected',  cls: 'bg-teal-100 text-teal-700 border-teal-200' },
-    cancelled:  { label: 'Cancelled',  cls: 'bg-red-100 text-red-700 border-red-200' },
-};
+const bookings = ref([]);
+const meta = ref({ current_page: 1, last_page: 1, total: 0 });
+const loading = ref(false);
+const error = ref('');
+const filters = reactive({ search: '', status: '', mine: false });
 
-const statusLabel = (s) => STATUS[s]?.label || s;
-const statusCls   = (s) => STATUS[s]?.cls || 'bg-slate-100 text-slate-600 border-slate-200';
+const amount = b => Number(b.total_amount_usd) > 0 ? money(b.total_amount_usd, 'USD') : money(b.total_amount_tzs);
 
-const fetchBookings = async () => {
-    loading.value = true;
-    try {
-        const params = new URLSearchParams();
-        if (search.value)       params.append('search', search.value);
-        if (statusFilter.value) params.append('status', statusFilter.value);
-        const res = await axios.get(`/portal/api/cargo/consignments?${params.toString()}`);
-        bookings.value = res.data.data;
-    } catch (e) {
-        console.error('Failed to fetch bookings', e);
-    } finally {
-        loading.value = false;
-    }
-};
+// The address bar is the source of truth: ?search=&status=&mine=1&page=
+function apply() {
+  router.replace({ query: {
+    ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.mine ? { mine: 1 } : {}),
+  } });
+}
+const go = page => router.replace({ query: { ...route.query, page } });
 
-const formatDate = (date) => moment(date).format('D MMM YYYY');
+async function load() {
+  if (route.name !== 'CargoBookings') return; // leaving for a booking page
+  filters.search = route.query.search || '';
+  filters.status = route.query.status || '';
+  filters.mine = !!route.query.mine;
+  loading.value = true;
+  try {
+    const { data } = await axios.get('/portal/api/cargo/consignments', { params: route.query });
+    bookings.value = data.data;
+    meta.value = { current_page: data.current_page, last_page: data.last_page, total: data.total };
+    error.value = '';
+  } catch (e) {
+    error.value = apiError(e, "Couldn't load bookings.").message;
+  } finally {
+    loading.value = false;
+  }
+}
 
-onMounted(fetchBookings);
+watch(() => route.query, load, { immediate: true });
 </script>
+
+<style scoped>
+.th { text-align: left; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.025em; padding: 0.625rem 1rem; white-space: nowrap; }
+.th-r { text-align: right !important; }
+.td { padding: 0.75rem 1rem; color: #334155; border-top: 1px solid #f1f5f9; }
+</style>

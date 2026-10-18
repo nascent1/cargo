@@ -8,7 +8,7 @@
             <img src="{{ asset('images/logo.png') }}" alt="{{ \App\Models\SystemConfig::getValue('platform_name', 'MAFIA FAST FERRIES') }}" class="h-14 w-auto object-contain drop-shadow-sm">
             <div class="flex flex-col justify-center">
                 <h2 class="text-base font-extrabold text-surface-900 tracking-wide leading-tight">{{ \App\Models\SystemConfig::getValue('platform_name', 'MAFIA FAST FERRIES') }}</h2>
-                <p class="text-[10px] text-brand-600 font-bold uppercase tracking-widest mt-0.5">Booking System</p>
+                <p class="text-[10px] text-brand-600 font-bold uppercase tracking-widest mt-0.5">Cargo Management</p>
             </div>
         </div>
         <button type="button" @click="sidebarOpen = false" class="lg:hidden rounded-md p-2 -mr-2 text-surface-400 hover:bg-surface-100 hover:text-surface-600 focus:outline-none">
@@ -21,6 +21,9 @@
         <ul role="list" class="flex flex-1 flex-col gap-y-7">
             @php
                 $allMenus = \App\Models\Menu::getMenuTree();
+                // A ".index" route also covers its section's other pages (admin.reports.index → admin.reports.show)
+                $menuIsActive = fn (?string $route) => $route && (request()->routeIs($route . '*')
+                    || (str_ends_with($route, '.index') && request()->routeIs(\Illuminate\Support\Str::beforeLast($route, '.index') . '.*')));
                 $mainMenus = $allMenus->where('section', 'main');
                 $adminMenus = $allMenus->where('section', 'administration');
             @endphp
@@ -40,7 +43,7 @@
                                 @foreach($menu->children as $child)
                                     @if($child->canAccess(auth()->user()))
                                         @php
-                                            $isActive = $child->route && request()->routeIs($child->route . '*');
+                                            $isActive = $menuIsActive($child->route);
                                         @endphp
                                         <li>
                                             <a href="{{ $child->route ? route($child->route) : '#' }}"
@@ -55,7 +58,7 @@
                                 @endif
                             @else
                                 @php
-                                    $isActive = $menu->route && request()->routeIs($menu->route . '*');
+                                    $isActive = $menuIsActive($menu->route);
                                 @endphp
                                 <li>
                                     <a href="{{ $menu->route ? route($menu->route) : '#' }}"
@@ -94,7 +97,7 @@
                             @foreach($menu->children as $child)
                                 @if($child->canAccess(auth()->user()))
                                     @php
-                                        $isActive = $child->route && request()->routeIs($child->route . '*');
+                                        $isActive = $menuIsActive($child->route);
                                     @endphp
                                     <li>
                                             <a href="{{ $child->route ? route($child->route) : '#' }}"
@@ -110,7 +113,7 @@
                         @else
                             @if($menu->canAccess(auth()->user()))
                                 @php
-                                    $isActive = $menu->route && request()->routeIs($menu->route . '*');
+                                    $isActive = $menuIsActive($menu->route);
                                 @endphp
                                 <li>
                                     <a href="{{ $menu->route ? route($menu->route) : '#' }}"

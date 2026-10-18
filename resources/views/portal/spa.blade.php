@@ -1,22 +1,25 @@
+@php
+    $brand = [
+        'name' => \App\Models\SystemConfig::getValue('company_name', config('app.name')),
+        'platform' => \App\Models\SystemConfig::getValue('platform_name', config('app.name')),
+        'logo' => \App\Models\SystemConfig::getValue('company_logo_url', '/images/logo.png'),
+    ];
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Cargo Portal — {{ config('app.name', 'Ferry Booking') }}</title>
+    <title>Sales Counter — {{ $brand['platform'] }}</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: { extend: {
-                fontFamily: { sans: ['Inter', 'sans-serif'] },
+                fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
                 colors: {
                     brand: { 50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',300:'#93c5fd',400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a8a',950:'#172554' },
                     amber: { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',300:'#fcd34d',400:'#fbbf24',500:'#f59e0b',600:'#d97706',700:'#b45309',800:'#92400e',900:'#78350f',950:'#451a03' },
@@ -27,10 +30,16 @@
             }},
         }
     </script>
+    {{-- Same booking look as the admin booking page --}}
+    @include('partials.cargo-ui-theme')
+    <script>
+        window.PortalBrand = @js($brand);
+        window.CargoUiConfig = @js(\App\Support\CargoUi::config());
+    </script>
 
     @vite(['resources/js/portal/main.js'])
 </head>
-<body class="h-full bg-surface-100 text-slate-700 font-sans antialiased selection:bg-brand-500 selection:text-white overflow-x-hidden">
+<body class="h-full bg-slate-50 text-slate-800 font-sans antialiased selection:bg-brand-500 selection:text-white overflow-x-hidden">
     <div id="portal-app" class="h-full flex flex-col"></div>
 </body>
 </html>

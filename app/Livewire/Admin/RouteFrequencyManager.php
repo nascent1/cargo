@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Concerns\SubmitsDualControlChanges;
 use Livewire\Component;
 use App\Models\Route;
 use App\Models\Trip;
@@ -9,6 +10,8 @@ use App\Services\DualControlService;
 
 class RouteFrequencyManager extends Component
 {
+    use SubmitsDualControlChanges;
+
     public Route $route;
     
     public $trip_id;
@@ -44,16 +47,15 @@ class RouteFrequencyManager extends Component
 
         if ($this->trip_id) {
             $trip = Trip::findOrFail($this->trip_id);
-            $dcService->submit('trip_update', 'trip', $trip->id, [
+            $ok = $this->submitDualControl('trip_update', 'trip', $trip->id, [
                 'before' => $trip->toArray(),
                 'after' => array_merge($trip->toArray(), $payload),
-            ]);
-            session()->flash('success', 'Trip update submitted for Dual Control approval.');
+            ], 'Trip updated.');
         } else {
-            $dcService->submit('trip_create', 'trip', 0, [
-                'after' => $payload,
-            ]);
-            session()->flash('success', 'Route trip submitted for Dual Control approval.');
+            $ok = $this->submitDualControl('trip_create', 'trip', 0, ['after' => $payload], 'Trip added.');
+        }
+        if (!$ok) {
+            return;
         }
 
         $this->reset(['trip_id', 'departure_time', 'arrival_time']);
@@ -69,12 +71,10 @@ class RouteFrequencyManager extends Component
     {
         $trip = Trip::findOrFail($tripId);
         
-        $dcService->submit('trip_delete', 'trip', $trip->id, [
+        $this->submitDualControl('trip_delete', 'trip', $trip->id, [
             'before' => $trip->toArray(),
             'after' => [],
-        ]);
-
-        session()->flash('success', 'Trip deletion submitted for Dual Control approval.');
+        ], 'Trip deleted.', false);
     }
 
     public function render()

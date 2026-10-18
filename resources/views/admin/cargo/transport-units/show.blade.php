@@ -4,7 +4,7 @@
 
     <div class="mb-6 flex justify-between items-center">
         <div>
-            <h2 class="text-2xl font-bold text-slate-800">{{ $unit->name }}</h2>
+            <h2 class="text-2xl font-bold text-slate-800">{{ $unit->name }} <x-dual-control.pending-badge subject="cargo_transport_unit:{{ $unit->id }}" class="align-middle" /></h2>
             <p class="text-slate-500 text-sm">Reg: {{ $unit->registration_number }} &bull; Type: {{ ucfirst($unit->type) }}</p>
         </div>
         <a href="{{ route('admin.cargo.transport-units.index') }}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-colors">Back</a>
@@ -134,15 +134,18 @@
                 <div class="mb-6 flex justify-between items-center">
                     <div>
                         <h3 class="font-bold text-slate-800 text-lg">Unit Cargo Prices</h3>
-                        <p class="text-sm text-slate-500">View fares currently configured explicitly for this transport unit.</p>
+                        <p class="text-sm text-slate-500">Fares set for this vessel only (current and scheduled). They win over the route's standard fare.</p>
                     </div>
                     <a href="{{ route('admin.cargo.fares') }}" class="px-4 py-2 bg-brand-50 text-brand-700 hover:bg-brand-100 rounded-xl font-medium border border-brand-200 transition-colors">
                         <i class="fas fa-external-link-alt mr-2"></i> Manage Fares
                     </a>
                 </div>
 
-                @php 
-                    $fares = \App\Models\CargoFare::where('transport_unit_id', $unit->id)->with(['cargoType', 'route'])->get(); 
+                @php
+                    // Current and scheduled versions only; ended / cancelled versions are in the fare history
+                    $fares = \App\Models\CargoFare::where('transport_unit_id', $unit->id)->live()->with(['cargoType', 'route'])
+                        ->orderBy('cargo_type_id')->orderBy('route_id')->orderBy('effective_from')->get();
+                    $fareLabel = fn ($f) => $f->cargoType ? app(\App\Services\Cargo\CargoFareService::class)->priceLabel($f->cargoType, $f->prices()) : '—';
                 @endphp
 
                 <div class="overflow-x-auto bg-white border border-slate-200 rounded-2xl shadow-sm">
@@ -151,24 +154,26 @@
                             <tr class="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
                                 <th class="px-6 py-4">Cargo Type</th>
                                 <th class="px-6 py-4">Route</th>
-                                <th class="px-6 py-4">Price (TZS)</th>
-                                <th class="px-6 py-4">Price / KG (TZS)</th>
-                                <th class="px-6 py-4">Min Charge</th>
+                                <th class="px-6 py-4">Price</th>
+                                <th class="px-6 py-4">Valid</th>
+                                <th class="px-6 py-4">State</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @forelse($fares as $fare)
                             <tr class="hover:bg-slate-50">
-                                <td class="px-6 py-4 text-sm font-medium text-slate-900">{{ $fare->cargoType->name ?? 'All' }}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ $fare->route->name ?? 'All Routes' }}</td>
-                                <td class="px-6 py-4 text-sm font-medium text-emerald-600">{{ number_format($fare->price_tzs, 2) }}</td>
-                                <td class="px-6 py-4 text-sm font-medium text-emerald-600">{{ number_format($fare->price_per_kg_tzs, 2) }}</td>
-                                <td class="px-6 py-4 text-sm text-slate-500">{{ number_format($fare->min_charge_tzs, 2) }}</td>
+                                <td class="px-6 py-4 text-sm font-medium text-slate-900">
+                                    @if ($fare->cargoType)<a href="{{ route('admin.cargo.types.show', $fare->cargoType) }}" class="hover:text-brand-700">{{ $fare->cargoType->name }}</a>@else — @endif
+                                </td>
+                                <td class="px-6 py-4 text-sm text-slate-600">{{ $fare->route->name ?? '—' }}</td>
+                                <td class="px-6 py-4 text-sm font-medium text-emerald-700">{{ $fareLabel($fare) }}</td>
+                                <td class="px-6 py-4 text-xs text-slate-600">{{ $fare->effective_from->format('d M Y H:i') }} → {{ $fare->effective_until ? $fare->effective_until->copy()->subMinute()->format('d M Y H:i') : 'no end' }}</td>
+                                <td class="px-6 py-4 text-xs"><span class="inline-flex px-2 py-0.5 rounded-full font-semibold {{ $fare->state === 'current' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800' }}">{{ $fare->state }}</span></td>
                             </tr>
                             @empty
                             <tr>
                                 <td colspan="5" class="px-6 py-8 text-center text-slate-500">
-                                    No cargo fares explicitly configured for this transport unit.
+                                    No vessel-specific cargo fares. This vessel uses each route's standard fares.
                                 </td>
                             </tr>
                             @endforelse

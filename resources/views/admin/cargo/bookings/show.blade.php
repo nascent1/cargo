@@ -6,10 +6,23 @@
         activeTab: 'items',
         showCancelModal: false,
         showStatusModal: false,
-        statusUpdate: '{{ $consignment->status }}',
+        showHandover: {{ $errors->any() || old('collector_name') ? 'true' : 'false' }},
     }">
         <!-- Sleek Light-Theme Professional Dashboard Workspace -->
         <div class="bg-slate-50 text-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-8">
+            {{-- Port operations notices --}}
+            @if($consignment->isLeftBehind())
+                <div class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-800">
+                    <i class="fas fa-triangle-exclamation mr-1"></i><strong>Left behind:</strong> paid but not loaded when the vessel departed
+                    ({{ $consignment->left_behind_at->format('d M Y H:i') }}). Contact the sender about the next departure, or cancel and refund.
+                </div>
+            @endif
+            @if(session('handover_warnings'))
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">
+                    <p class="font-bold"><i class="fas fa-triangle-exclamation mr-1"></i>Handed over with warnings (recorded):</p>
+                    <ul class="list-disc ml-5 mt-1">@foreach(session('handover_warnings') as $w)<li>{{ $w }}</li>@endforeach</ul>
+                </div>
+            @endif
             <!-- Top Dashboard Header Row -->
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-3 sm:gap-4">
@@ -36,6 +49,9 @@
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider {{ $badgeClass }}">
                             {{ $consignment->status === 'pending_payment' ? 'Awaiting payment' : str_replace('_', ' ', $consignment->status) }}
                         </span>
+                    @endif
+                    @if($actions['correct'])
+                        <button type="button" @click="showStatusModal = true" class="text-xs font-semibold text-slate-500 hover:text-brand-600 underline decoration-dotted" title="Fix a wrong status (with a reason)">Correct status</button>
                     @endif
                 </div>
 
@@ -115,26 +131,68 @@
                                     @endif
                                 </div>
                             </div>
+                            @if((float) $consignment->discount_amount > 0)
+                                <div class="flex items-center justify-between pt-1 border-b border-slate-100 pb-2">
+                                    <span class="text-slate-500">Discount:</span>
+                                    <span class="font-bold text-emerald-700 font-mono">−{{ number_format((float) $consignment->discount_amount, 2) }}</span>
+                                </div>
+                            @endif
+                            @if($consignment->receiver_id_number)
+                                <div class="flex items-center justify-between pt-1 border-b border-slate-100 pb-2">
+                                    <span class="text-slate-500">Receiver ID:</span>
+                                    <span class="font-bold text-slate-900">{{ $consignment->receiver_id_type }} {{ $consignment->receiver_id_number }}</span>
+                                </div>
+                            @endif
+                            @if($consignment->special_instructions)
+                                <div class="sm:col-span-2 pt-1">
+                                    <span class="text-slate-500">Special instructions:</span>
+                                    <p class="font-semibold text-amber-800 mt-0.5">{{ $consignment->special_instructions }}</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
 
                 <!-- Right: 4 High-Impact Action Tiles Side by Side -->
                 <div class="lg:col-span-5 grid grid-cols-2 sm:grid-cols-4 gap-3 items-stretch">
-                    <!-- Tile 1: Update Status -->
-                    @if(!in_array($consignment->status, ['cancelled', 'collected', 'pending_payment']))
-                        <button @click="showStatusModal = true" class="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-white hover:bg-brand-50/60 border border-slate-200 hover:border-brand-300 text-slate-700 hover:text-brand-600 font-bold text-xs transition-all shadow-sm hover:shadow group">
-                            <div class="w-11 h-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-lg mb-2 shadow-2xs group-hover:bg-brand-600 group-hover:text-white transition-colors">
-                                <i class="fas fa-exchange-alt"></i>
-                            </div>
-                            <span class="text-center leading-tight">Update<br>Status</span>
+                    <!-- Tile 1: next port step (load before departure, hand over on arrival) -->
+                    @if($actions['load'])
+                        @php
+                            $svc = $consignment->transportService;
+                            $loadOn = collect([
+                                $svc?->transportUnit?->name,
+                                $svc?->departure_date ? \Carbon\Carbon::parse($svc->departure_date)->format('d M Y') . ($svc->departure_time ? ' ' . substr($svc->departure_time, 0, 5) : '') : null,
+                            ])->filter()->implode(' · ');
+                        @endphp
+                        <form method="POST" action="{{ route('admin.cargo.bookings.load', $consignment) }}"
+                            data-confirm="{{ $loadOn ? "On {$loadOn}." : 'On the vessel for this departure.' }}"
+                            data-confirm-title="Mark {{ $consignment->consignment_number }} loaded?"
+                            data-confirm-button="Mark loaded" data-confirm-cancel="Not now" data-confirm-icon="fa-dolly">
+                            @csrf
+                            <button class="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-white hover:bg-brand-50/60 border border-slate-200 hover:border-brand-300 text-slate-700 hover:text-brand-600 font-bold text-xs transition-all shadow-sm hover:shadow group w-full h-full">
+                                <div class="w-11 h-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-lg mb-2 shadow-2xs group-hover:bg-brand-600 group-hover:text-white transition-colors"><i class="fas fa-dolly"></i></div>
+                                <span class="text-center leading-tight">Mark<br>Loaded</span>
+                            </button>
+                        </form>
+                    @elseif($actions['handover'])
+                        <button type="button" @click="showHandover = true" class="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-white hover:bg-brand-50/60 border border-slate-200 hover:border-brand-300 text-slate-700 hover:text-brand-600 font-bold text-xs transition-all shadow-sm hover:shadow group w-full h-full">
+                            <div class="w-11 h-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-lg mb-2 shadow-2xs group-hover:bg-brand-600 group-hover:text-white transition-colors"><i class="fas fa-hand-holding"></i></div>
+                            <span class="text-center leading-tight">Hand<br>Over</span>
                         </button>
                     @else
-                        <div class="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 font-bold text-xs cursor-not-allowed">
-                            <div class="w-11 h-11 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center text-lg mb-2">
-                                <i class="fas fa-exchange-alt"></i>
-                            </div>
-                            <span class="text-center leading-tight">Update<br>Status</span>
+                        @php
+                            $next = match (true) {
+                                $consignment->isLeftBehind() => 'Left<br>behind',
+                                $consignment->status === 'booked' => 'Loading<br>closed',
+                                $consignment->status === 'loaded' => 'Departs with<br>the vessel',
+                                $consignment->status === 'in_transit' => 'Arrives with<br>the vessel',
+                                $consignment->status === 'collected' => 'Collected',
+                                default => 'No port<br>step',
+                            };
+                        @endphp
+                        <div class="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 font-bold text-xs" title="In transit and arrived follow the journey (Operations › Journeys)">
+                            <div class="w-11 h-11 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center text-lg mb-2"><i class="fas fa-ship"></i></div>
+                            <span class="text-center leading-tight">{!! $next !!}</span>
                         </div>
                     @endif
 
@@ -244,7 +302,15 @@
                                         <td class="py-4 px-4 text-center text-slate-500 font-mono">{{ $index + 1 }}.</td>
                                         <td class="py-4 px-4 font-mono font-bold">{{ $item->qr_code_token ?? 'N/A' }}</td>
                                         <td class="py-4 px-4">{{ $item->cargoType?->name ?? 'Unknown' }}</td>
-                                        <td class="py-4 px-4">{{ $item->description ?? 'No description' }}</td>
+                                        <td class="py-4 px-4">
+                                            {{ (int) $item->quantity > 1 ? $item->quantity . ' × ' : '' }}{{ $item->description ?? 'No description' }}
+                                            @if($item->vehicle_reg_number)
+                                                <div class="text-slate-500 mt-0.5">Reg <span class="font-mono font-bold text-slate-700">{{ $item->vehicle_reg_number }}</span>{{ $item->driver_name ? ' · Driver ' . $item->driver_name : '' }}{{ $item->driver_phone ? ' (' . $item->driver_phone . ')' : '' }}</div>
+                                            @endif
+                                            @if((float) $item->declared_value > 0)
+                                                <div class="text-slate-500 mt-0.5">Declared value {{ number_format((float) $item->declared_value) }}@if((float) $item->value_charge > 0) · value charge <span class="font-semibold text-slate-700">{{ number_format((float) $item->value_charge) }}</span>@endif</div>
+                                            @endif
+                                        </td>
                                         <td class="py-4 px-4">
                                             <div>{{ number_format((float) $item->weight_kg, 2) }} kg</div>
                                             <div class="text-slate-500">{{ number_format((float) $item->volume_cbm, 4) }} cbm</div>
@@ -257,7 +323,20 @@
                                                 {{ str_replace('_', ' ', $item->status) }}
                                             </span>
                                         </td>
-                                        <td class="py-4 px-4 text-right font-mono font-bold">{{ number_format((float) $item->final_fare, 2) }}</td>
+                                        <td class="py-4 px-4 text-right">
+                                            <span class="font-mono font-bold">{{ number_format((float) $item->final_fare, 2) }}</span>
+                                            {{-- How this line was priced, from its own record (never the live fare) --}}
+                                            @if ($item->unit_rate !== null)
+                                                <div class="text-[11px] text-slate-500 font-normal">
+                                                    @ {{ number_format((float) $item->unit_rate) }} {{ ['per_kg' => '/ kg', 'per_cbm' => '/ cbm', 'minimum' => 'minimum'][$item->pricing_method] ?? 'each' }}
+                                                    @if ((float) $item->value_charge_pct > 0) · +{{ rtrim(rtrim(number_format((float) $item->value_charge_pct, 2), '0'), '.') }}% value @endif
+                                                </div>
+                                            @endif
+                                            @if ($item->fare_id)
+                                                <a href="{{ route('admin.cargo.types.show', $item->cargo_type_id) }}#history" class="text-[11px] text-brand-700 hover:underline font-normal"
+                                                    title="Priced {{ $item->priced_at?->format('d M Y H:i') }}">fare #{{ $item->fare_id }}{{ $item->fare_version ? ' v' . $item->fare_version : '' }}</a>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
@@ -272,6 +351,22 @@
 
             <!-- TAB 2: TRACKING HISTORY -->
             <div x-show="activeTab === 'tracking'" class="space-y-4" style="display: none;">
+                @if($consignment->collected_by_name)
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                        <h4 class="text-sm font-bold text-slate-800 mb-3"><i class="fas fa-hand-holding text-brand-600 mr-1"></i> Collection</h4>
+                        <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div><dt class="text-xs text-slate-500">Collected by</dt><dd class="font-semibold">{{ $consignment->collected_by_name }}</dd></div>
+                            <div><dt class="text-xs text-slate-500">ID</dt><dd class="font-semibold">{{ \App\Services\Cargo\CargoHandoverService::ID_TYPES[$consignment->collected_id_type] ?? $consignment->collected_id_type }} · <span class="font-mono">{{ $consignment->collected_id_number }}</span></dd></div>
+                            <div><dt class="text-xs text-slate-500">Mobile</dt><dd class="font-semibold font-mono">{{ $consignment->collected_phone }}
+                                @if($consignment->collected_phone_verified)<span class="ml-1 text-emerald-700 font-sans text-xs"><i class="fas fa-circle-check"></i> confirmed by code</span>
+                                @else<span class="ml-1 text-amber-700 font-sans text-xs"><i class="fas fa-triangle-exclamation"></i> not confirmed</span>@endif</dd></div>
+                            <div><dt class="text-xs text-slate-500">Handed over</dt><dd class="font-semibold">{{ $consignment->collected_at?->format('d M Y H:i') }} by {{ $consignment->handedOverBy?->full_name ?? '—' }}</dd></div>
+                        </dl>
+                        @if($consignment->collection_warnings)
+                            <ul class="mt-3 text-xs text-amber-800 list-disc ml-5">@foreach($consignment->collection_warnings as $w)<li>{{ $w }}</li>@endforeach</ul>
+                        @endif
+                    </div>
+                @endif
                 <h3 class="text-xl font-bold text-slate-800 tracking-tight">
                     Tracking History
                 </h3>
@@ -406,40 +501,43 @@
             </div>
         </div>
 
-        <!-- Status Update Modal -->
-        <div x-show="showStatusModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4" style="display: none;">
-            <div x-show="showStatusModal" x-transition.opacity class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-            <div x-show="showStatusModal" x-transition.scale.95 class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100">
-                <form action="{{ route('admin.cargo.bookings.update-status', $consignment) }}" method="POST">
+        <!-- Correct status (supervisors, with a reason) -->
+        @if($actions['correct'])
+            <div x-show="showStatusModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4" style="display: none;">
+                <div class="absolute inset-0 bg-slate-900/60" @click="showStatusModal = false"></div>
+                <form method="POST" action="{{ route('admin.cargo.bookings.update-status', $consignment) }}" class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
                     @csrf
                     @method('PATCH')
-                    <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-exchange-alt text-brand-600"></i> Update Status
-                        </h3>
-                        <button type="button" @click="showStatusModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
-                            <i class="fas fa-times text-lg"></i>
-                        </button>
+                    <div class="px-6 py-5 border-b border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-wrench text-brand-600 mr-1"></i> Correct status</h3>
+                        <p class="text-xs text-slate-500 mt-1">For fixing mistakes only. Normal steps: load here, depart / arrive on Journeys, hand over on arrival.</p>
                     </div>
-                    <div class="p-6">
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">New Status</label>
-                        <select name="status" x-model="statusUpdate" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:bg-white transition-colors" required>
-                            <option value="booked">Booked</option>
-                            <option value="loaded">Loaded</option>
-                            <option value="in_transit">In Transit</option>
-                            <option value="delivered">Delivered (Arrived at Dest)</option>
-                            <option value="collected">Collected by Receiver</option>
-                        </select>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="correct-status">Set status to</label>
+                            <select id="correct-status" name="status" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                @foreach(\App\Services\Cargo\CargoOperationsService::CORRECTABLE as $st)
+                                    @continue($st === $consignment->status)
+                                    <option value="{{ $st }}">{{ \App\Support\CargoUi::STATUS[$st]['label'] ?? $st }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="correct-reason">Reason</label>
+                            <textarea id="correct-reason" name="reason" required minlength="5" maxlength="500" rows="3" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="e.g. Marked loaded by mistake"></textarea>
+                        </div>
                     </div>
                     <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                        <button type="button" @click="showStatusModal = false" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-colors">Cancel</button>
-                        <button type="submit" class="px-5 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-brand-700 transition-colors">
-                            Update
-                        </button>
+                        <button type="button" @click="showStatusModal = false" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold text-sm">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-sm hover:bg-brand-700">Correct status</button>
                     </div>
                 </form>
             </div>
-        </div>
+        @endif
 
+        <!-- Hand over (collector's ID + mobile confirmed by a code) -->
+        @if($actions['handover'])
+            @include('admin.cargo.bookings.partials.handover', ['consignment' => $consignment])
+        @endif
     </div>
 </x-layouts.admin>

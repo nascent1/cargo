@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
 use App\Channels\SmsChannel;
+use App\Support\DynamicMailConfig;
 
 class AdminPasswordResetNotification extends Notification
 {
@@ -20,13 +21,11 @@ class AdminPasswordResetNotification extends Notification
 
     public function via($notifiable)
     {
-        $channels = ['mail'];
-        
-        if (!empty($notifiable->phone)) {
-            $channels[] = SmsChannel::class;
-        }
-        
-        return $channels;
+        // SMS first, so a mail failure can't stop it; email only when mail is really delivered
+        return array_values(array_filter([
+            !empty($notifiable->phone) ? SmsChannel::class : null,
+            DynamicMailConfig::delivers() && !empty($notifiable->email) ? 'mail' : null,
+        ]));
     }
 
     public function toMail($notifiable)
@@ -41,8 +40,12 @@ class AdminPasswordResetNotification extends Notification
             ->line('If you did not expect this, please contact support immediately.');
     }
 
-    public function toSms($notifiable)
+    /** SMS policy event "password_reset_by_admin" (template in Notifications › Templates). */
+    public function toSms($notifiable): array
     {
-        return "Hello {$notifiable->first_name}, your password has been reset by an administrator. Your temporary password is: {$this->temporaryPassword}. Please login to change it.";
+        return ['event' => 'password_reset_by_admin', 'data' => [
+            'first_name'         => $notifiable->first_name,
+            'temporary_password' => $this->temporaryPassword,
+        ]];
     }
 }

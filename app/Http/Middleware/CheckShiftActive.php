@@ -2,56 +2,36 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\ShiftService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Services\ShiftService;
 
+/**
+ * Guards the sales portal's booking, payment and cancel endpoints. A sales officer's shift
+ * normally started when they signed in (StartShiftOnSignIn); with none running, the first action
+ * starts one. Once it has ended they get 403 SHIFT_ENDED until the rest period passes or an
+ * extension is approved. Viewing, printing and tracking are not guarded.
+ */
 class CheckShiftActive
 {
-    protected ShiftService $shiftService;
-
-    public function __construct(ShiftService $shiftService)
+    public function __construct(protected ShiftService $shiftService)
     {
-        $this->shiftService = $shiftService;
     }
 
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        // Only enforce for sales officers
-        if (!$user || $user->domain !== 'system_user') {
+        if (!$user || !$this->shiftService->appliesTo($user)) {
             return $next($request);
         }
 
-        if (!$this->shiftService->isShiftManagementEnabled()) {
-            return $next($request);
-        }
-
-        $shift = $this->shiftService->getActiveShift($user);
-
-        if (!$shift) {
-            // First action, start shift
-            $this->shiftService->startShift($user);
-            return $next($request);
-        }
-
-        // Check if shift is expired
-        if ($shift->end_time && now()->isAfter($shift->end_time)) {
-            $this->shiftService->endShift($shift);
-
-            // Log them out or return 403
-            // Since this is an API route (usually called from SPA), returning 403 with specific code is best.
-            // The frontend will intercept this and redirect to a "Shift Ended" screen.
+        if (!$this->shiftService->shiftForAction($user)) {
             return response()->json([
-                'message' => 'Your shift has ended.',
-                'code' => 'SHIFT_ENDED'
+                'message' => 'Your shift has ended. Request an extension if you need to keep selling.',
+                'code' => 'SHIFT_ENDED',
+                'shift' => $this->shiftService->context($user),
             ], 403);
         }
 

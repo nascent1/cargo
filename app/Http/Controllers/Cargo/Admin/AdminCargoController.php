@@ -3,195 +3,244 @@
 namespace App\Http\Controllers\Cargo\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Cargo\Concerns\BuildsCargoCart;
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use Illuminate\Http\Request;
 use App\Models\Consignment;
 use App\Models\CargoType;
-use App\Models\CargoFare;
 use App\Models\Route;
 use App\Models\TransportUnit;
 use App\Models\TransportService;
 use App\Models\PaymentMethod;
 use App\Services\Cargo\CargoBookingService;
-use App\Services\Cargo\CargoTrackingService;
-use App\Services\Cargo\CargoPaymentService;
-use App\Exceptions\CargoPaymentException;
-use Illuminate\Validation\Rule;
+use App\Services\Cargo\CargoDashboardService;
+use App\Services\Cargo\CargoManifestService;
 
 class AdminCargoController extends Controller
 {
-    public function dashboardStats()
+    use BuildsCargoCart, SubmitsDualControl;
+
+    // ═══════════════════════════════════════════════════════════
+    // DASHBOARD
+    // ═══════════════════════════════════════════════════════════
+
+    public function dashboard()
     {
-        $today = now()->startOfDay();
-        
-        $consignmentsToday = Consignment::where('created_at', '>=', $today)->count();
-        $revenueToday = Consignment::where('created_at', '>=', $today)
-            ->whereNotIn('status', ['cancelled'])
-            ->sum('total_amount_tzs');
-            
-        $activeShipments = Consignment::whereIn('status', ['booked', 'loaded', 'in_transit'])->count();
-        
-        $services = TransportService::with(['transportUnit.cargoCapacities', 'cargoInventory', 'route'])
-            ->whereDate('departure_date', today()->toDateString())
-            ->get();
+        return view('admin.cargo.dashboard', ['periods' => CargoDashboardService::PERIODS]);
+    }
 
-        $capacityOverview = $services->map(function ($v) {
-            $cap = $v->transportUnit?->cargoCapacities->first();
-            $inv = $v->cargoInventory;
-            return [
-                'service_id' => $v->id,
-                'ferry' => $v->transportUnit?->name,
-                'route' => $v->route?->name,
-                'departure' => $v->departure_time,
-                'lane_meters' => [
-                    'total' => $cap?->total_lane_meters ?? 0,
-                    'used' => $inv ? ($cap?->total_lane_meters ?? 0) - ($inv->available_lane_meters ?? 0) : 0,
-                    'available' => $inv?->available_lane_meters ?? ($cap?->total_lane_meters ?? 0),
-                ],
-                'weight_kg' => [
-                    'total' => $cap?->total_weight_capacity_kg ?? 0,
-                    'used' => $inv ? ($cap?->total_weight_capacity_kg ?? 0) - ($inv->available_weight ?? 0) : 0,
-                    'available' => $inv?->available_weight ?? ($cap?->total_weight_capacity_kg ?? 0),
-                ],
-                'volume_cbm' => [
-                    'total' => $cap?->total_volume_capacity_cbm ?? 0,
-                    'used' => $inv ? ($cap?->total_volume_capacity_cbm ?? 0) - ($inv->available_volume ?? 0) : 0,
-                    'available' => $inv?->available_volume ?? ($cap?->total_volume_capacity_cbm ?? 0),
-                ],
-            ];
-        })->toArray();
+    public function dashboardStats(Request $request, CargoDashboardService $dashboard)
+    {
+        $period = array_key_exists($request->period, CargoDashboardService::PERIODS) ? $request->period : 'today';
 
-        return response()->json([
-            'consignments_today' => $consignmentsToday,
-            'revenue_tzs_today' => $revenueToday,
-            'active_shipments' => $activeShipments,
-            'capacityOverview' => $capacityOverview,
+        return response()->json($dashboard->summary($period));
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CONSIGNMENTS LIST (filters shared by the page, its API and the Excel export)
+    // ═══════════════════════════════════════════════════════════
+
+    private const LIST_STATUSES = ['pending_payment', 'booked', 'loaded', 'in_transit', 'delivered', 'unclaimed', 'collected', 'cancelled'];
+
+    public function consignmentsPage()
+    {
+        return view('admin.cargo.consignments', [
+            'statuses' => self::LIST_STATUSES,
+            'routes' => Route::orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::orderBy('sort_order')->get(['slug', 'name']),
+            'bookers' => \App\Models\User::whereIn('id', Consignment::select('booked_by_user_id')->whereNotNull('booked_by_user_id')->distinct())
+                ->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'canExport' => auth()->user()->hasPermission('cargo-export-report'),
         ]);
     }
 
     public function getConsignments(Request $request)
     {
-        $query = Consignment::with(['route.origin', 'route.destination', 'bookedByUser', 'bookedByAgent']);
-        
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        $perPage = min(max((int) $request->input('per_page', 20), 5), 100);
+
+        $page = $this->consignmentQuery($request)
+            ->with(['route:id,name', 'transportService:id,departure_date,departure_time,service_number,transport_unit_id', 'transportService.transportUnit:id,name', 'bookedByUser:id,first_name,last_name'])
+            ->withCount('items')
+            ->orderByDesc('consignments.created_at')
+            ->paginate($perPage);
+
+        $page->getCollection()->transform(fn (Consignment $c) => [
+            'id' => $c->id,
+            'consignment_number' => $c->consignment_number,
+            'tracking_number' => $c->tracking_number,
+            'created_at' => $c->created_at?->toIso8601String(),
+            'sender_name' => $c->sender_name,
+            'sender_phone' => $c->sender_phone,
+            'receiver_name' => $c->receiver_name,
+            'receiver_phone' => $c->receiver_phone,
+            'route' => $c->route?->name,
+            'departure_date' => $c->transportService?->departure_date,
+            'departure_time' => $c->transportService?->departure_time ? substr($c->transportService->departure_time, 0, 5) : null,
+            'unit' => $c->transportService?->transportUnit?->name,
+            'status' => $c->status,
+            'payment_status' => $c->payment_status,
+            'payment_method' => $c->payment_method_label,
+            'amount' => $c->billing_amount,
+            'currency' => $c->billing_currency,
+            'items_count' => $c->items_count,
+            'weight_kg' => (float) $c->total_weight_kg,
+            'booked_by' => $c->bookedByUser?->full_name,
+        ]);
+
+        // Counts per status for the tabs (every filter except status itself)
+        $counts = $this->consignmentQuery($request, false)
+            ->select('consignments.status')
+            ->selectRaw('COUNT(*) AS n')
+            ->groupBy('consignments.status')
+            ->pluck('n', 'status');
+
+        return response()->json(array_merge($page->toArray(), ['status_counts' => $counts]));
+    }
+
+    public function exportConsignments(Request $request)
+    {
+        $filename = 'Cargo_Bookings_' . now()->format('Ymd_His') . '.xlsx';
+
+        return \App\Support\ExcelDownload::make($filename, fn ($writer) => $this->consignmentQuery($request)
+            ->with(['route:id,name', 'transportService:id,departure_date,departure_time,transport_unit_id', 'transportService.transportUnit:id,name', 'bookedByUser:id,first_name,last_name', 'paymentChannel'])
+            ->withCount('items')
+            ->orderByDesc('consignments.created_at')
+            ->chunk(500, function ($rows) use ($writer) {
+                foreach ($rows as $c) {
+                    $writer->addRow([
+                        'Booking No.' => $c->consignment_number,
+                        'Booked At' => $c->created_at?->format('Y-m-d H:i'),
+                        'Departure' => trim(($c->transportService?->departure_date ?? '') . ' ' . substr($c->transportService?->departure_time ?? '', 0, 5)),
+                        'Route' => $c->route?->name,
+                        'Vessel' => $c->transportService?->transportUnit?->name,
+                        'Sender' => $c->sender_name,
+                        'Sender Phone' => $c->sender_phone,
+                        'Receiver' => $c->receiver_name,
+                        'Receiver Phone' => $c->receiver_phone,
+                        'Items' => $c->items_count,
+                        'Weight (kg)' => (float) $c->total_weight_kg,
+                        'Status' => \Illuminate\Support\Str::headline($c->status),
+                        'Payment' => \Illuminate\Support\Str::headline($c->payment_status),
+                        'Channel' => $c->payment_method_label,
+                        'Currency' => $c->billing_currency,
+                        'Amount' => $c->billing_amount,
+                        'Discount' => (float) $c->discount_amount,
+                        'Booked By' => $c->bookedByUser?->full_name,
+                    ]);
+                }
+            }));
+    }
+
+    private function consignmentQuery(Request $request, bool $withStatus = true)
+    {
+        $query = Consignment::query()->select('consignments.*');
+
+        if ($withStatus && $request->filled('status')) {
+            $query->where('consignments.status', $request->status);
         }
-        
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('consignment_number', 'like', "%$search%")
-                  ->orWhere('sender_name', 'like', "%$search%")
-                  ->orWhere('receiver_name', 'like', "%$search%");
+        if ($request->filled('payment_status')) {
+            $query->where('consignments.payment_status', $request->payment_status);
+        }
+        if ($request->filled('route_id')) {
+            $query->where('consignments.route_id', $request->route_id);
+        }
+        if ($request->filled('transport_service_id')) {
+            $query->where('consignments.transport_service_id', $request->transport_service_id);
+        }
+        if ($request->filled('payment_method')) {
+            $query->where('consignments.payment_method', $request->payment_method);
+        }
+        if ($request->filled('booked_by')) {
+            $query->where('consignments.booked_by_user_id', $request->booked_by);
+        }
+
+        // Dates filter on booking date, or on the departure date
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->date_field === 'departure') {
+                $query->whereHas('transportService', function ($q) use ($request) {
+                    $q->when($request->filled('date_from'), fn ($q) => $q->whereDate('departure_date', '>=', $request->date_from))
+                      ->when($request->filled('date_to'), fn ($q) => $q->whereDate('departure_date', '<=', $request->date_to));
+                });
+            } else {
+                $query->when($request->filled('date_from'), fn ($q) => $q->whereDate('consignments.created_at', '>=', $request->date_from))
+                      ->when($request->filled('date_to'), fn ($q) => $q->whereDate('consignments.created_at', '<=', $request->date_to));
+            }
+        }
+
+        if ($request->filled('search')) {
+            $term = trim($request->search);
+            $digits = \App\Support\Msisdn::searchDigits($term);
+            $query->where(function ($q) use ($term, $digits) {
+                foreach (['consignment_number', 'tracking_number', 'sender_name', 'receiver_name'] as $col) {
+                    $q->orWhere("consignments.{$col}", 'ilike', '%' . $term . '%');
+                }
+                // Phone numbers in any format, whole or part ("+255 754", "0754 12", "754123456")
+                if ($digits) {
+                    $q->orWhereRaw("regexp_replace(coalesce(consignments.sender_phone, ''), '\\D', '', 'g') LIKE ?", ['%' . $digits . '%'])
+                      ->orWhereRaw("regexp_replace(coalesce(consignments.receiver_phone, ''), '\\D', '', 'g') LIKE ?", ['%' . $digits . '%']);
+                }
             });
         }
-        
-        return response()->json($query->orderBy('created_at', 'desc')->paginate(20));
+
+        return $query;
     }
 
     public function getCargoTypes()
     {
-        return response()->json(CargoType::all());
+        // fares_count: routes/vessels with a fare in force now (0 = can't be booked anywhere)
+        return response()->json(CargoType::withCount('currentFares')->orderBy('category')->orderBy('sort_order')->orderBy('name')->get());
     }
 
+    /**
+     * Cargo types change through dual control (rules cargo_type_create / _update / _delete).
+     */
     public function storeCargoType(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string',
-            'code' => 'required|string|unique:cargo_types',
-            'category' => 'required|string',
-            'measurement_unit' => 'required|in:kg,cbm,unit,lane_meter',
-            'lane_meters' => 'required|numeric',
-            'max_weight_kg' => 'required|numeric',
-            'requires_hazmat_declaration' => 'boolean',
-            'is_fragile' => 'boolean',
-            'icon' => 'nullable|string',
-            'status' => 'required|in:active,inactive'
-        ]);
+        $validated = $this->validateCargoType($request);
 
-        $type = CargoType::create($validated);
-        return response()->json($type, 201);
+        return $this->submitChange($request, 'cargo_type_create', 'cargo_type', 0, ['after' => $validated], 'Cargo type created.');
     }
 
     public function updateCargoType(Request $request, CargoType $cargoType)
     {
+        $validated = $this->validateCargoType($request, $cargoType);
+        $before = $cargoType->only(array_keys($validated));
+
+        return $this->submitChange($request, 'cargo_type_update', 'cargo_type', $cargoType->id,
+            ['before' => $before, 'after' => array_merge($before, $validated)], 'Cargo type updated.');
+    }
+
+    public function destroyCargoType(Request $request, CargoType $cargoType)
+    {
+        if ($cargoType->fares()->exists()) {
+            return response()->json(['message' => 'This cargo type has fares, so it cannot be deleted. Set it inactive instead.'], 422);
+        }
+
+        return $this->submitChange($request, 'cargo_type_delete', 'cargo_type', $cargoType->id,
+            ['before' => $cargoType->only(['name', 'code', 'category', 'status'])], 'Cargo type deleted.');
+    }
+
+    private function validateCargoType(Request $request, ?CargoType $existing = null): array
+    {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'category' => 'required|string',
+            'name' => 'required|string|max:100',
+            'code' => $existing ? 'prohibited' : 'required|string|max:20|unique:cargo_types,code',
+            'category' => 'required|string|max:30',
             'measurement_unit' => 'required|in:kg,cbm,unit,lane_meter',
-            'lane_meters' => 'required|numeric',
-            'max_weight_kg' => 'required|numeric',
+            'lane_meters' => 'required|numeric|min:0',
+            'max_weight_kg' => 'required|numeric|min:0',
             'requires_hazmat_declaration' => 'boolean',
             'is_fragile' => 'boolean',
-            'icon' => 'nullable|string',
-            'status' => 'required|in:active,inactive'
-        ]);
-
-        $cargoType->update($validated);
-        return response()->json($cargoType);
-    }
-
-    // ── Cargo Fares CRUD ──────────────────────────────────
-
-    public function getCargoFares(Request $request)
-    {
-        $query = CargoFare::with(['cargoType', 'route', 'transportUnit']);
-
-        if ($request->has('cargo_type_id')) {
-            $query->where('cargo_type_id', $request->cargo_type_id);
-        }
-        if ($request->has('route_id')) {
-            $query->where('route_id', $request->route_id);
-        }
-
-        return response()->json($query->orderBy('cargo_type_id')->get());
-    }
-
-    public function storeCargoFare(Request $request)
-    {
-        $validated = $request->validate([
-            'cargo_type_id' => 'required|exists:cargo_types,id',
-            'route_id' => 'nullable|exists:routes,id',
-            'transport_unit_id' => 'nullable|exists:transport_units,id',
-            'price_tzs' => 'required|numeric|min:0',
-            'price_usd' => 'required|numeric|min:0',
-            'price_per_kg_tzs' => 'nullable|numeric|min:0',
-            'price_per_kg_usd' => 'nullable|numeric|min:0',
-            'price_per_cbm_tzs' => 'nullable|numeric|min:0',
-            'price_per_cbm_usd' => 'nullable|numeric|min:0',
-            'min_charge_tzs' => 'nullable|numeric|min:0',
-            'min_charge_usd' => 'nullable|numeric|min:0',
+            'icon' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
         ]);
+        if (!$existing) {
+            $validated['code'] = strtoupper($validated['code']);
+        }
+        $validated['requires_hazmat_declaration'] = (bool) ($validated['requires_hazmat_declaration'] ?? false);
+        $validated['is_fragile'] = (bool) ($validated['is_fragile'] ?? false);
 
-        $fare = CargoFare::create($validated);
-        return response()->json($fare->load(['cargoType', 'route', 'transportUnit']), 201);
-    }
-
-    public function updateCargoFare(Request $request, CargoFare $cargoFare)
-    {
-        $validated = $request->validate([
-            'cargo_type_id' => 'required|exists:cargo_types,id',
-            'route_id' => 'nullable|exists:routes,id',
-            'transport_unit_id' => 'nullable|exists:transport_units,id',
-            'price_tzs' => 'required|numeric|min:0',
-            'price_usd' => 'required|numeric|min:0',
-            'price_per_kg_tzs' => 'nullable|numeric|min:0',
-            'price_per_kg_usd' => 'nullable|numeric|min:0',
-            'price_per_cbm_tzs' => 'nullable|numeric|min:0',
-            'price_per_cbm_usd' => 'nullable|numeric|min:0',
-            'min_charge_tzs' => 'nullable|numeric|min:0',
-            'min_charge_usd' => 'nullable|numeric|min:0',
-            'status' => 'required|in:active,inactive',
-        ]);
-
-        $cargoFare->update($validated);
-        return response()->json($cargoFare->load(['cargoType', 'route', 'transportUnit']));
-    }
-
-    public function destroyCargoFare(CargoFare $cargoFare)
-    {
-        $cargoFare->delete();
-        return response()->json(['message' => 'Fare deleted successfully']);
+        return $validated;
     }
 
     // ── Lookup Helpers ────────────────────────────────────────
@@ -218,24 +267,93 @@ class AdminCargoController extends Controller
         return response()->json($units);
     }
 
-    public function getServices()
+    // ── Loading manifest ──────────────────────────────────────
+
+    public function manifestPage(Request $request)
     {
-        $services = TransportService::with(['route', 'transportUnit'])
-            ->orderBy('departure_date', 'desc')
-            ->orderBy('departure_time', 'desc')
-            ->limit(100)
-            ->get();
-        return response()->json($services);
+        $service = $request->filled('service') ? TransportService::find($request->service) : null;
+
+        return view('admin.cargo.manifest', [
+            'date' => $service?->departure_date ?? ($request->date ?: today()->toDateString()),
+            'serviceId' => $service?->id,
+        ]);
     }
 
-    public function destroyCargoType(CargoType $cargoType)
+    /**
+     * Departures on a date, with how much is booked on each (for the manifest picker).
+     */
+    public function getManifestServices(Request $request)
     {
-        // Prevent deletion if fares exist
-        if ($cargoType->fares()->count() > 0) {
-            return response()->json(['message' => 'Cannot delete type with existing fares.'], 422);
+        $request->validate(['date' => 'required|date']);
+
+        $services = TransportService::with(['route:id,name', 'transportUnit:id,name'])
+            ->whereDate('departure_date', $request->date)
+            ->orderBy('departure_time')
+            ->get();
+
+        $booked = Consignment::whereIn('transport_service_id', $services->pluck('id'))
+            ->groupBy('transport_service_id')
+            ->selectRaw("transport_service_id,
+                         COUNT(*) FILTER (WHERE status IN ('" . implode("','", CargoManifestService::MANIFEST_STATUSES) . "')) AS on_manifest,
+                         COUNT(*) FILTER (WHERE status = 'pending_payment') AS awaiting")
+            ->get()->keyBy('transport_service_id');
+
+        return response()->json($services->map(fn (TransportService $s) => [
+            'id' => $s->id,
+            'service_number' => $s->service_number,
+            'route' => $s->route?->name,
+            'unit' => $s->transportUnit?->name,
+            'time' => $s->departure_time ? substr($s->departure_time, 0, 5) : null,
+            'status' => $s->status,
+            'consignments' => (int) ($booked[$s->id]->on_manifest ?? 0),
+            'awaiting_payment' => (int) ($booked[$s->id]->awaiting ?? 0),
+        ]));
+    }
+
+    public function getManifest($transportServiceId, CargoManifestService $manifestSvc)
+    {
+        try {
+            return response()->json($manifestSvc->generateManifest($transportServiceId));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return response()->json(['message' => 'Departure not found.'], 404);
         }
-        $cargoType->delete();
-        return response()->json(['message' => 'Cargo type deleted.']);
+    }
+
+    public function exportManifest(Request $request, TransportService $transportService, CargoManifestService $manifestSvc)
+    {
+        $manifest = $manifestSvc->generateManifest($transportService->id);
+        $name = 'Manifest_' . ($manifest['service_number'] ?: $transportService->id) . '_' . $manifest['departure_date'];
+
+        if ($request->format === 'excel') {
+            return \App\Support\ExcelDownload::make($name . '.xlsx', function ($writer) use ($manifest) {
+                foreach ($manifest['consignments'] as $c) {
+                    foreach ($c['items'] as $item) {
+                        $writer->addRow([
+                            'Booking No.' => $c['consignment_number'],
+                            'Sender' => $c['sender'],
+                            'Sender Phone' => $c['sender_phone'],
+                            'Receiver' => $c['receiver'],
+                            'Receiver Phone' => $c['receiver_phone'],
+                            'Item No.' => $item['item_number'],
+                            'Barcode' => $item['barcode'],
+                            'Cargo Type' => $item['type'],
+                            'Description' => $item['description'],
+                            'Vehicle Reg.' => $item['vehicle_reg_number'],
+                            'Qty' => $item['quantity'],
+                            'Weight (kg)' => $item['weight'],
+                            'Volume (cbm)' => $item['volume_cbm'],
+                            'Fragile' => $item['is_fragile'] ? 'Yes' : '',
+                            'Hazmat' => $item['is_hazmat'] ? 'Yes' : '',
+                            'Status' => \Illuminate\Support\Str::headline($item['status']),
+                        ]);
+                    }
+                }
+            });
+        }
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.reports.cargo.manifest-pdf', compact('manifest'))
+            ->setPaper('a4', 'landscape')
+            ->stream($name . '.pdf');
     }
 
     // ── Single Consignment Detail ─────────────────────────
@@ -262,242 +380,70 @@ class AdminCargoController extends Controller
 
     // ═══════════════════════════════════════════════════════════
     // ADMIN CARGO BOOKING (Walk-in counter flow)
+    // Same engine as the sales portal: CargoFareCalculator prices, CargoInventoryService
+    // holds space, CargoBookingService books. The browser never sends a price.
     // ═══════════════════════════════════════════════════════════
 
-    public function bookingTerminal()
+    public function bookingTerminal(Request $request)
     {
-        return view('admin.cargo.booking', ['paymentMethods' => PaymentMethod::activeOptions()]);
+        $cargoTypes = CargoType::where('status', 'active')
+            ->orderBy('category')->orderBy('sort_order')->orderBy('name')
+            ->get(['id', 'name', 'code', 'category', 'measurement_unit', 'lane_meters', 'max_weight_kg', 'requires_hazmat_declaration', 'is_fragile']);
+
+        return view('admin.cargo.booking', [
+            'paymentMethods' => PaymentMethod::activeOptions(),
+            'cargoTypes' => $cargoTypes,
+            'canOverrideFare' => $request->user()->hasPermission('cargo-override-fare'),
+        ]);
     }
 
+    /**
+     * Bookable departures for a day (`date`) or the next few days (`from` + `days`), with free space.
+     */
     public function getAvailableServicesForBooking(Request $request)
     {
-        $request->validate(['date' => 'required|date']);
-
-        $services = \App\Models\TransportService::with(['route.origin', 'route.destination', 'transportUnit', 'cargoInventory'])
-            ->where('departure_date', $request->date)
-            ->where('status', 'scheduled')
-            ->orderBy('departure_time')
-            ->get();
-
-        return response()->json($services);
+        return response()->json($this->bookableDepartures($request));
     }
 
-    public function calculateFareAdmin(Request $request)
+    /**
+     * Live price for the cart (called as the clerk types).
+     */
+    public function quoteBooking(Request $request)
     {
-        $request->validate([
-            'cargo_type_id' => 'required|exists:cargo_types,id',
-            'route_id' => 'required|exists:routes,id',
-            'weight_kg' => 'nullable|numeric|min:0',
-            'volume_cbm' => 'nullable|numeric|min:0',
-            'quantity' => 'nullable|integer|min:1',
-        ]);
+        return response()->json($this->quoteCart($request));
+    }
 
-        $type = CargoType::findOrFail($request->cargo_type_id);
-        $fare = CargoFare::where('cargo_type_id', $type->id)
-            ->where('route_id', $request->route_id)
-            ->where('status', 'active')
-            ->first();
+    public function acquireLockAdmin(Request $request)
+    {
+        $lock = $this->holdCart($request);
 
-        if (!$fare) {
-            // Fallback: route-agnostic fare
-            $fare = CargoFare::where('cargo_type_id', $type->id)
-                ->whereNull('route_id')
-                ->where('status', 'active')
-                ->first();
-        }
+        return response()->json(['lock_id' => $lock->id, 'expires_at' => $lock->expires_at]);
+    }
 
-        if (!$fare) {
-            return response()->json(['message' => 'No fare configured for this cargo type and route.'], 404);
-        }
+    public function releaseLockAdmin(Request $request)
+    {
+        $this->releaseHold($request);
 
-        $baseFare = 0;
-        $quantity = $request->quantity ?? 1;
+        return response()->json(['message' => 'Lock released']);
+    }
 
-        switch ($type->measurement_unit) {
-            case 'kg':
-                $weight = $request->weight_kg ?? 0;
-                $baseFare = max($fare->price_per_kg_tzs * $weight, $fare->min_charge_tzs ?? 0);
-                break;
-            case 'cbm':
-                $volume = $request->volume_cbm ?? 0;
-                $baseFare = max($fare->price_per_cbm_tzs * $volume, $fare->min_charge_tzs ?? 0);
-                break;
-            case 'lane_meter':
-                $baseFare = $fare->price_tzs * $quantity;
-                break;
-            case 'unit':
-            default:
-                $baseFare = $fare->price_tzs * $quantity;
-                break;
-        }
-
-        $surcharges = 0;
-        $surchargeDetails = [];
-
-        if ($type->is_fragile) {
-            $fragileSurcharge = $baseFare * 0.05;
-            $surcharges += $fragileSurcharge;
-            $surchargeDetails[] = ['label' => 'Fragile handling (5%)', 'amount' => $fragileSurcharge];
-        }
-        if ($type->requires_hazmat_declaration) {
-            $hazmatFee = 10000;
-            $surcharges += $hazmatFee;
-            $surchargeDetails[] = ['label' => 'Hazmat declaration', 'amount' => $hazmatFee];
-        }
+    public function confirmBookingAdmin(Request $request)
+    {
+        [$consignment, $payment] = $this->bookCart($request);
 
         return response()->json([
-            'base_fare' => round($baseFare),
-            'surcharges' => round($surcharges),
-            'surcharge_details' => $surchargeDetails,
-            'total_fare' => round($baseFare + $surcharges),
-            'currency' => 'TZS',
-            'fare_id' => $fare->id,
-        ]);
+            'message' => $payment->status === 'paid' ? 'Booking confirmed and paid.' : 'Booking reserved — awaiting payment.',
+            'consignment' => $consignment->fresh()->load('items.cargoType'),
+            'payment' => $payment->toApi(),
+        ], 201);
     }
 
-    public function acquireLockAdmin(Request $request, \App\Services\Cargo\CargoInventoryService $inventorySvc)
+    /**
+     * Previous senders/receivers with this phone number, newest first (autofill at the counter).
+     */
+    public function lookupCustomer(Request $request)
     {
-        $request->validate([
-            'transport_service_id' => 'required|exists:transport_services,id',
-            'items' => 'required|array',
-        ]);
-
-        try {
-            $lock = $inventorySvc->acquireLock(
-                $request->transport_service_id,
-                $request->items,
-                $request->user()->id,
-                $request->user()->agent_id ?? null
-            );
-            return response()->json(['lock_id' => $lock->id, 'expires_at' => $lock->expires_at]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-    }
-
-    public function releaseLockAdmin(Request $request, \App\Services\Cargo\CargoInventoryService $inventorySvc)
-    {
-        $request->validate(['lock_id' => 'required|exists:cargo_locks,id']);
-
-        try {
-            $lock = \App\Models\CargoLock::findOrFail($request->lock_id);
-            $inventorySvc->releaseLock($lock);
-            return response()->json(['message' => 'Lock released']);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-    }
-
-    public function confirmBookingAdmin(Request $request, \App\Services\Cargo\CargoInventoryService $inventorySvc, CargoPaymentService $paymentSvc)
-    {
-        $validated = $request->validate([
-            'lock_id' => 'required|exists:cargo_locks,id',
-            'transport_service_id' => 'required|exists:transport_services,id',
-            'route_id' => 'required|exists:routes,id',
-            'sender_name' => 'required|string|max:100',
-            'sender_phone' => 'required|string|max:20',
-            'sender_id_type' => 'nullable|string|max:30',
-            'sender_id_number' => 'nullable|string|max:50',
-            'receiver_name' => 'required|string|max:100',
-            'receiver_phone' => 'required|string|max:20',
-            'payment_method' => ['required', Rule::exists('payment_methods', 'slug')->where('is_active', true)],
-            'payer_msisdn' => 'nullable|string|max:20',
-            'items' => 'required|array|min:1',
-            'items.*.cargo_type_id' => 'required|exists:cargo_types,id',
-            'items.*.description' => 'nullable|string',
-            'items.*.weight_kg' => 'nullable|numeric|min:0',
-            'items.*.length_m' => 'nullable|numeric|min:0',
-            'items.*.width_m' => 'nullable|numeric|min:0',
-            'items.*.height_m' => 'nullable|numeric|min:0',
-            'items.*.quantity' => 'nullable|integer|min:1',
-            'items.*.fare_amount' => 'required|numeric|min:0',
-        ]);
-
-        // Reject an unusable channel / payer number before anything is booked
-        $method = PaymentMethod::where('slug', $validated['payment_method'])->firstOrFail();
-        try {
-            $paymentSvc->assertCanStart($method, $validated['payer_msisdn'] ?? null);
-        } catch (CargoPaymentException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        return \DB::transaction(function () use ($validated, $request, $inventorySvc, $paymentSvc, $method) {
-            $lock = \App\Models\CargoLock::findOrFail($validated['lock_id']);
-            $totalAmount = collect($validated['items'])->sum('fare_amount');
-
-            // Generate consignment number
-            $date = now()->format('ymd');
-            $seq = Consignment::whereDate('created_at', now())->count() + 1;
-            $consignmentNumber = 'CG-' . $date . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
-
-            $consignment = Consignment::create([
-                'uuid' => \Str::uuid()->toString(),
-                'consignment_number' => $consignmentNumber,
-                'tracking_number' => 'TRK-' . strtoupper(\Str::random(10)),
-                'qr_code_token' => bin2hex(random_bytes(16)),
-                'transport_service_id' => $validated['transport_service_id'],
-                'route_id' => $validated['route_id'],
-                'sender_name' => $validated['sender_name'],
-                'sender_phone' => $validated['sender_phone'],
-                'sender_id_type' => $validated['sender_id_type'] ?? null,
-                'sender_id_number' => $validated['sender_id_number'] ?? null,
-                'receiver_name' => $validated['receiver_name'],
-                'receiver_phone' => $validated['receiver_phone'],
-                'total_amount_tzs' => $totalAmount,
-                'payment_method' => $validated['payment_method'],
-                'payment_status' => 'unpaid',
-                'status' => 'pending_payment', // becomes 'booked' once CargoPaymentService confirms payment
-                'booked_by_user_id' => $request->user()->id,
-            ]);
-
-            // Create cargo items
-            foreach ($validated['items'] as $i => $item) {
-                $volume = null;
-                if (!empty($item['length_m']) && !empty($item['width_m']) && !empty($item['height_m'])) {
-                    $volume = $item['length_m'] * $item['width_m'] * $item['height_m'];
-                }
-
-                \App\Models\CargoItem::create([
-                    'consignment_id' => $consignment->id,
-                    'cargo_type_id' => $item['cargo_type_id'],
-                    'description' => $item['description'] ?? null,
-                    'weight_kg' => $item['weight_kg'] ?? null,
-                    'length_m' => $item['length_m'] ?? null,
-                    'width_m' => $item['width_m'] ?? null,
-                    'height_m' => $item['height_m'] ?? null,
-                    'volume_cbm' => $volume,
-                    'quantity' => $item['quantity'] ?? 1,
-                    'final_fare' => $item['fare_amount'],
-                    'currency' => 'TZS',
-                    'status' => 'accepted',
-                    'item_number' => $consignment->consignment_number . '-' . str_pad($i + 1, 2, '0', STR_PAD_LEFT),
-                    'qr_code_token' => bin2hex(random_bytes(16)),
-                ]);
-            }
-
-            // Commit cargo inventory lock
-            $inventorySvc->commitLock($lock);
-
-            // Create initial tracking event
-            if (class_exists(\App\Models\TrackingEvent::class)) {
-                \App\Models\TrackingEvent::create([
-                    'consignment_id' => $consignment->id,
-                    'event_type' => 'state_change',
-                    'to_status' => 'pending_payment',
-                    'notes' => 'Cargo accepted at counter — awaiting payment',
-                    'performed_by_id' => $request->user()->id,
-                ]);
-            }
-
-            // Cash completes immediately; push / Lipa Namba complete from the booking profile
-            $payment = $paymentSvc->start($consignment, $method, $validated['payer_msisdn'] ?? null, $request->user());
-
-            return response()->json([
-                'message' => $payment->status === 'paid' ? 'Booking confirmed and paid.' : 'Booking reserved — awaiting payment.',
-                'consignment' => $consignment->fresh()->load('items.cargoType'),
-                'payment' => $payment->toApi(),
-            ], 201);
-        });
+        return response()->json($this->customerSuggestions($request));
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -521,47 +467,23 @@ class AdminCargoController extends Controller
             'payments.paymentMethod',
             'payments.confirmedBy',
             'payments.initiatedBy',
+            'handedOverBy',
         ]);
+        // Load / hand over / correct buttons for this user (port operations)
+        $actions = app(\App\Services\Cargo\CargoOperationsService::class)->actions($consignment, auth()->user());
 
-        return view('admin.cargo.bookings.show', compact('consignment'));
+        return view('admin.cargo.bookings.show', compact('consignment', 'actions'));
     }
 
     public function cancelConsignment(Request $request, Consignment $consignment, CargoBookingService $bookingSvc)
     {
         $request->validate(['reason' => 'required|string|max:500']);
 
-        try {
-            // Shared with the sales portal: releases inventory, cancels items, logs tracking
-            $bookingSvc->cancelBooking($consignment, auth()->id(), $request->reason);
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', $e->getMessage());
-        }
-
-        return redirect()->route('admin.cargo.bookings.show', $consignment)
-            ->with('success', 'Booking has been cancelled successfully.');
-    }
-
-    public function updateConsignmentStatus(Request $request, Consignment $consignment, CargoTrackingService $trackingSvc)
-    {
-        $request->validate([
-            'status' => 'required|in:booked,loaded,in_transit,delivered,collected',
-        ]);
-
-        $newStatus = $request->status;
-        $oldStatus = $consignment->status;
-
-        if ($oldStatus === 'cancelled') {
-            return redirect()->back()->with('error', 'Cannot update status of a cancelled booking.');
-        }
-        if ($oldStatus === 'pending_payment') {
-            return redirect()->back()->with('error', 'This booking is awaiting payment. Complete the payment before updating its status.');
-        }
-
-        // Updates consignment + item statuses, timestamps and tracking events
-        $trackingSvc->logEvent($consignment, $newStatus, "Status updated from {$oldStatus} to {$newStatus}", auth()->id());
-
-        return redirect()->route('admin.cargo.bookings.show', $consignment)
-            ->with('success', "Booking status updated to " . ucfirst(str_replace('_', ' ', $newStatus)) . ".");
+        // Through dual control (cargo_booking_cancel); the handler releases space, cancels items and logs tracking
+        return $this->submitChange($request, 'cargo_booking_cancel', 'consignment', $consignment->id, [
+            'before' => ['status' => $consignment->status, 'payment_status' => $consignment->payment_status],
+            'after' => ['status' => 'cancelled', 'reason' => $request->reason, 'booking' => $consignment->consignment_number],
+        ], 'Booking has been cancelled.', route('admin.cargo.bookings.show', $consignment));
     }
 
     public function printReceipt(Consignment $consignment)

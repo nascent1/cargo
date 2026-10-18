@@ -62,6 +62,8 @@
                         class="w-full px-3 py-2.5 text-sm rounded-xl border border-surface-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 outline-none transition-all bg-surface-50 focus:bg-white">
                 </div>
 
+                <x-dual-control.takes-effect op="exchange_rate_create" :schedule="false" />
+
                 <button type="submit"
                     class="w-full py-2.5 text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2">
                     <i class="fas fa-save text-xs"></i> Save Exchange Rate
@@ -112,8 +114,10 @@
                                 {{ $rate->creator?->name ?? 'System' }}
                             </td>
                             <td class="px-5 py-3.5 text-center">
-                                <form action="{{ route('admin.settings.exchange-rates.destroy', $rate) }}" method="POST"
-                                    class="inline" onsubmit="return confirm('Delete this exchange rate?')">
+                                @php $approveDelete ??= app(\App\Services\DualControlService::class)->requiresDualControl('exchange_rate_delete'); @endphp
+                                <form action="{{ route('admin.settings.exchange-rates.destroy', $rate) }}" method="POST" class="inline"
+                                    data-confirm="{{ $rate->from_currency }} → {{ $rate->to_currency }} at {{ number_format($rate->rate, 2) }}, effective {{ $rate->effective_from->format('d M Y') }}.{{ $approveDelete ? ' A checker must approve it first.' : '' }}"
+                                    data-confirm-title="Delete this exchange rate?" data-confirm-button="{{ $approveDelete ? 'Request deletion' : 'Delete' }}" data-confirm-tone="danger">
                                     @csrf @method('DELETE')
                                     <button type="submit"
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors">

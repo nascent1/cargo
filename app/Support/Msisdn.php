@@ -93,4 +93,20 @@ class Msisdn
 
         return $normalized ? '0' . substr($normalized, 3) : null;
     }
+
+    /**
+     * Digits to look for when someone searches by phone in any format: "+255 754 12", "0754 12"
+     * and "754 12" all become "75412". Null when the term has too few digits to be a phone search.
+     */
+    public static function searchDigits(?string $term): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $term);
+        if (str_starts_with($digits, '255') && strlen($digits) > 3) {
+            $digits = substr($digits, 3);
+        } elseif (str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+
+        return strlen($digits) >= 5 ? $digits : null;
+    }
 }

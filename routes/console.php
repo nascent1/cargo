@@ -19,3 +19,9 @@ Schedule::command('cargo:auto-arrived')->hourly()->name('cargo-auto-arrived')->w
 Schedule::command('cargo:mark-unclaimed')->dailyAt('02:00')->name('cargo-mark-unclaimed')->withoutOverlapping();
 Schedule::command('reports:snapshot')->dailyAt('01:00');
 Schedule::command('financials:reconcile')->dailyAt('02:30')->name('cargo-financial-reconciliation')->withoutOverlapping();
+
+// Dual control: apply scheduled changes when their start time comes, expire unapproved requests
+Schedule::command('dual-control:process')->everyMinute()->name('dual-control-process')->withoutOverlapping();
+
+// Close of business: SMS summary once the day's last cargo departure has left (+ buffer)
+Schedule::command('notifications:close-business-day')->everyFiveMinutes()->name('close-business-day')->withoutOverlapping();

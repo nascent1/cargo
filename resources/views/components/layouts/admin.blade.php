@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'Dashboard' }} — Ferry Booking Platform</title>
+    <title>{{ $title ?? 'Dashboard' }} — {{ \App\Models\SystemConfig::getValue('platform_name', config('app.name')) }}</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
@@ -257,6 +257,9 @@
             </div>
         </template>
     </div>
+
+    {{-- Confirm dialog: confirmDialog({...}) / <form data-confirm="…"> — never the browser's confirm() --}}
+    <x-admin.confirm-dialog />
 
     <script>
         window.notify = function(text, type = 'error') {

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Concerns\SubmitsDualControlChanges;
 use Livewire\Component;
 use App\Models\TransportUnit;
 use App\Models\Schedule;
@@ -10,6 +11,8 @@ use App\Services\DualControlService;
 
 class TransportUnitScheduleManager extends Component
 {
+    use SubmitsDualControlChanges;
+
     public TransportUnit $transportUnit;
 
     public $schedule_id;
@@ -95,18 +98,17 @@ class TransportUnitScheduleManager extends Component
             $schedule = Schedule::findOrFail($this->schedule_id);
             $payload['status'] = $schedule->status; // preserve existing status
 
-            $dcService->submit('schedule_update', 'schedule', $schedule->id, [
+            $ok = $this->submitDualControl('schedule_update', 'schedule', $schedule->id, [
                 'before' => $schedule->toArray(),
                 'after' => array_merge($schedule->toArray(), $payload),
-            ]);
-            session()->flash('success', 'Transport unit schedule update submitted.');
+            ], 'Schedule updated.');
         } else {
             $payload['status'] = 'active'; // default status for new schedules
 
-            $dcService->submit('schedule_create', 'schedule', 0, [
-                'after' => $payload,
-            ]);
-            session()->flash('success', 'Transport unit schedule assignment submitted.');
+            $ok = $this->submitDualControl('schedule_create', 'schedule', 0, ['after' => $payload], 'Schedule added.');
+        }
+        if (!$ok) {
+            return; // refused (another change is open): keep the form so nothing typed is lost
         }
 
         $this->resetForm();
@@ -119,11 +121,10 @@ class TransportUnitScheduleManager extends Component
         $payload = $schedule->toArray();
         $payload['status'] = 'inactive';
 
-        $dcService->submit('schedule_update', 'schedule', $schedule->id, [
+        $this->submitDualControl('schedule_update', 'schedule', $schedule->id, [
             'before' => $schedule->toArray(),
             'after' => $payload,
-        ]);
-        session()->flash('success', 'Transport unit schedule suspension submitted.');
+        ], 'Schedule suspended.', false);
     }
     
     public function activateSchedule(DualControlService $dcService, $id)
@@ -132,11 +133,10 @@ class TransportUnitScheduleManager extends Component
         $payload = $schedule->toArray();
         $payload['status'] = 'active';
 
-        $dcService->submit('schedule_update', 'schedule', $schedule->id, [
+        $this->submitDualControl('schedule_update', 'schedule', $schedule->id, [
             'before' => $schedule->toArray(),
             'after' => $payload,
-        ]);
-        session()->flash('success', 'Transport unit schedule activation submitted.');
+        ], 'Schedule activated.', false);
     }
 
     public function resetForm()

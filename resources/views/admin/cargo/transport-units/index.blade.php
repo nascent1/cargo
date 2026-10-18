@@ -28,7 +28,7 @@
                 @foreach($units as $unit)
                 <tr class="hover:bg-slate-50 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{{ $unit->registration_number }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{{ $unit->name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{{ $unit->name }} <x-dual-control.pending-badge subject="cargo_transport_unit:{{ $unit->id }}" class="ml-1" /></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">{{ $unit->transport_type }} ({{ $unit->type }})</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         @if($unit->has_cargo_deck)

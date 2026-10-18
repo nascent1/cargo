@@ -33,7 +33,7 @@
                     <select id="origin_station_id" name="origin_station_id" required class="w-full rounded-xl border-slate-200 bg-slate-50 hover:bg-white focus:bg-white px-4 py-3.5 text-sm font-medium text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500 transition-colors">
                         <option value="" data-code="">Select Origin...</option>
                         @foreach($stations as $port)
-                            <option value="{{ $port->id }}" data-code="{{ $port->code }}" {{ old('origin_station_id', $route->origin_station_id) == $port->id ? 'selected' : '' }}>
+                            <option value="{{ $port->id }}" data-code="{{ $port->code }}" {{ old('origin_station_id', $route->origin_port_id) == $port->id ? 'selected' : '' }}>
                                 {{ $port->name }} ({{ $port->code }})
                             </option>
                         @endforeach
@@ -49,7 +49,7 @@
                     <select id="destination_station_id" name="destination_station_id" required class="w-full rounded-xl border-slate-200 bg-slate-50 hover:bg-white focus:bg-white px-4 py-3.5 text-sm font-medium text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500 transition-colors">
                         <option value="" data-code="">Select Destination...</option>
                         @foreach($stations as $port)
-                            <option value="{{ $port->id }}" data-code="{{ $port->code }}" {{ old('destination_station_id', $route->destination_station_id) == $port->id ? 'selected' : '' }}>
+                            <option value="{{ $port->id }}" data-code="{{ $port->code }}" {{ old('destination_station_id', $route->destination_port_id) == $port->id ? 'selected' : '' }}>
                                 {{ $port->name }} ({{ $port->code }})
                             </option>
                         @endforeach
@@ -61,6 +61,8 @@
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Distance (Nautical Miles)</label>
                 <input type="number" step="0.1" name="distance_nm" value="{{ old('distance_nm', $route->distance_nm) }}" class="w-1/2 rounded-xl border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="e.g. 45.5">
             </div>
+
+            <x-dual-control.takes-effect op="route_update" class="mt-6" />
 
             <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
                 <a href="{{ route('admin.cargo.routes.index') }}" class="px-6 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 font-medium rounded-xl transition-colors">

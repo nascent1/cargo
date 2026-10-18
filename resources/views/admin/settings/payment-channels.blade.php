@@ -113,10 +113,7 @@
                 <label class="block text-xs font-bold text-surface-600">Max push attempts per booking
                     <input type="number" name="cargo_ussd_max_pushes" value="{{ $settings['cargo_ussd_max_pushes'] ?? 3 }}" min="1" max="10" class="{{ $input }} mt-1" @disabled(!$canUpdate)>
                 </label>
-                <label class="flex items-center gap-2 text-sm text-surface-700">
-                    <input type="checkbox" name="cargo_payment_sms_enabled" value="1" @checked(($settings['cargo_payment_sms_enabled'] ?? '1') === '1') @disabled(!$canUpdate)>
-                    SMS the sender when payment is received
-                </label>
+                <p class="text-xs text-surface-500 sm:col-span-2"><i class="fas fa-comment-sms mr-1"></i>Booking-details SMS to the sender and receiver are set in <a href="{{ route('admin.settings.integrations.index') }}" class="text-brand-600 hover:underline">Integrations › SMS policy</a>.</p>
                 @unless($isProduction)
                     <label class="flex items-center gap-2 text-sm text-surface-700">
                         <input type="checkbox" name="cargo_payment_simulator_enabled" value="1" @checked(($settings['cargo_payment_simulator_enabled'] ?? '0') === '1') @disabled(!$canUpdate)>
@@ -124,6 +121,7 @@
                     </label>
                 @endunless
                 @if($canUpdate)
+                    <x-dual-control.takes-effect op="payment_rules_update" class="sm:col-span-3" />
                     <div class="sm:col-start-3 text-right"><button class="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-medium">Save rules</button></div>
                 @endif
             </form>
@@ -184,6 +182,10 @@
                             </label>
                             <p class="text-[11px] text-surface-500 mt-1">Register with {{ $provider['label'] }}: <code class="font-mono break-all text-surface-700">{{ $provider['callback_url'] }}</code></p>
                         </div>
+                        @if($canUpdate)
+                            <x-dual-control.takes-effect op="payment_provider_update" />
+                            <x-dual-control.pending-badge subject="payment_provider:{{ $driver }}" />
+                        @endif
                         <div class="flex items-center justify-between pt-2 border-t border-surface-100">
                             <label class="flex items-center gap-2 text-sm text-surface-700">
                                 <input type="checkbox" name="is_active" value="1" @checked($config?->is_active) @disabled(!$canUpdate)> Active
@@ -243,6 +245,7 @@
                     <label class="flex items-center gap-2 text-sm text-surface-700">
                         <input type="checkbox" name="is_active" value="1" x-model="m.is_active"> Active
                     </label>
+                    <x-dual-control.takes-effect op="payment_method_update" />
                     <div class="flex justify-end gap-2 pt-2">
                         <button type="button" @click="editing = null; adding = false" class="px-4 py-2 rounded-xl border border-surface-200 text-sm">Cancel</button>
                         <button class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium">Save</button>

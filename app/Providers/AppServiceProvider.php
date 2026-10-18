@@ -18,6 +18,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Email goes through the SMTP servers set in Settings › Integrations (failover), else .env
+        $this->app->resolving('mail.manager', fn () => \App\Support\DynamicMailConfig::apply());
+
         // Register booking lifecycle event listeners
         $listener = \App\Listeners\SendBookingNotification::class;
         Event::listen(\App\Events\BookingConfirmed::class, [$listener, 'handleBookingConfirmed']);

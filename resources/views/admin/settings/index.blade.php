@@ -4,12 +4,26 @@
 
     @include('admin.settings._tabs')
 
+    @php
+        // key => [min, max, step, unit] (checked again in SystemConfigController::TYPED_RULES)
+        $numericSettings = [
+            'close_of_business_buffer_minutes' => [0, 240, 5, 'minutes'],
+            'default_shift_hours' => [0.5, 24, 0.5, 'hours'],
+            'shift_rest_hours' => [0, 24, 0.5, 'hours'],
+            'shift_warning_minutes' => [0, 120, 5, 'minutes'],
+        ];
+        // key => [label, help] where the stored wording no longer fits
+        $settingText = [
+            'shift_rest_hours' => ['Minimum Break Between Shifts', 'A new shift may start from midnight after the day the last one started, and never sooner than this many hours after it ended (0 = from midnight). Sooner needs an approved extension.'],
+        ];
+    @endphp
+
     <!-- General Settings Content -->
     <form method="POST" action="{{ route('admin.settings.update') }}">
         @csrf
 
         @forelse($configs as $group => $groupSettings)
-            <div class="mb-8">
+            <div class="mb-8 scroll-mt-24" id="group-{{ $group }}">
                 <h3 class="text-base font-semibold text-surface-900 capitalize mb-4 flex items-center gap-2">
                     <span class="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-brand-50">
                         @switch($group)
@@ -19,6 +33,9 @@
                             @case('quality') <i class="fas fa-star text-brand-600 text-xs"></i> @break
                             @case('payment') <i class="fas fa-credit-card text-brand-600 text-xs"></i> @break
                             @case('traceability') <i class="fas fa-qrcode text-brand-600 text-xs"></i> @break
+                            @case('notification') <i class="fas fa-bell text-brand-600 text-xs"></i> @break
+                            @case('sms') <i class="fas fa-comment-sms text-brand-600 text-xs"></i> @break
+                            @case('shifts') <i class="fas fa-user-clock text-brand-600 text-xs"></i> @break
                             @default <i class="fas fa-cog text-brand-600 text-xs"></i>
                         @endswitch
                     </span>
@@ -31,10 +48,10 @@
                                 <div class="flex items-center justify-between gap-4">
                                     <div class="flex-1">
                                         <label for="setting_{{ $setting->key_name }}" class="font-medium text-surface-800 text-sm">
-                                            {{ str_replace('_', ' ', ucwords($setting->key_name, '_')) }}
+                                            {{ $settingText[$setting->key_name][0] ?? str_replace('_', ' ', ucwords($setting->key_name, '_')) }}
                                         </label>
-                                        @if($setting->description)
-                                            <p class="text-xs text-surface-400 mt-0.5">{{ $setting->description }}</p>
+                                        @if($settingText[$setting->key_name][1] ?? $setting->description)
+                                            <p class="text-xs text-surface-400 mt-0.5">{{ $settingText[$setting->key_name][1] ?? $setting->description }}</p>
                                         @endif
                                     </div>
                                     <div class="w-72 sm:w-80">
@@ -59,7 +76,7 @@
                                                 <option value="per_adult" {{ $setting->value === 'per_adult' ? 'selected' : '' }}>Per Adult</option>
                                                 <option value="per_booking" {{ $setting->value === 'per_booking' ? 'selected' : '' }}>Per Booking</option>
                                             </select>
-                                        @elseif(in_array($setting->key_name, ['restrict_agent_routes', 'restrict_agent_ferries', 'shift_management_enabled', 'sms_enabled', 'enable_2fa', 'enable_exchange_rate_conversion', 'agent_can_book_foreigners']))
+                                        @elseif(in_array($setting->key_name, ['restrict_agent_routes', 'restrict_agent_ferries', 'shift_management_enabled', 'sms_enabled', 'sms_booking_confirmation_sender', 'sms_booking_confirmation_receiver', 'enable_2fa', 'enable_exchange_rate_conversion', 'agent_can_book_foreigners']))
                                             <div class="flex items-center justify-end">
                                                 <label class="relative inline-flex items-center cursor-pointer">
                                                     <input type="hidden" name="settings[{{ $setting->key_name }}]" value="0">
@@ -67,6 +84,23 @@
                                                     <div class="w-11 h-6 bg-surface-200 peer-focus:ring-4 peer-focus:ring-brand-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500"></div>
                                                 </label>
                                             </div>
+                                        @elseif($setting->key_name === 'close_of_business_fallback_time')
+                                            <input type="time"
+                                                id="setting_{{ $setting->key_name }}"
+                                                name="settings[{{ $setting->key_name }}]"
+                                                value="{{ $setting->value }}" required
+                                                class="block w-full rounded-xl border border-slate-300 py-2.5 px-4 text-surface-900 ring-1 ring-inset ring-surface-200 focus:ring-2 focus:ring-brand-500 sm:text-sm shadow-sm bg-white transition-all">
+                                        @elseif(isset($numericSettings[$setting->key_name]))
+                                            @php [$min, $max, $step, $unit] = $numericSettings[$setting->key_name]; @endphp
+                                            <div class="flex items-center gap-2">
+                                                <input type="number"
+                                                    id="setting_{{ $setting->key_name }}"
+                                                    name="settings[{{ $setting->key_name }}]"
+                                                    value="{{ $setting->value }}" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" required
+                                                    class="block w-full rounded-xl border border-slate-300 py-2.5 px-4 text-surface-900 ring-1 ring-inset ring-surface-200 focus:ring-2 focus:ring-brand-500 sm:text-sm shadow-sm bg-white transition-all">
+                                                <span class="text-xs text-surface-500 w-16">{{ $unit }}</span>
+                                            </div>
+                                            @error('settings.' . $setting->key_name)<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
                                         @elseif($setting->is_sensitive)
                                             <input type="password"
                                                 id="setting_{{ $setting->key_name }}"
@@ -98,6 +132,7 @@
         @endforelse
 
         @if($configs->count() > 0)
+        <x-dual-control.takes-effect op="setting_update" class="mt-4" />
         <div class="flex justify-end mt-4">
             @php $canUpdateSettings = auth()->user()->hasPermission('setting:update'); @endphp
             @if($canUpdateSettings)

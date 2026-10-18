@@ -19,38 +19,19 @@ const router = createRouter({
             path: '/cargo-booking',
             name: 'CargoBooking',
             component: () => import('../views/cargo/CargoBooking.vue'),
-            meta: { title: 'Cargo Booking', permission: 'cargo-book' },
-        },
-
-        {
-            path: '/wallet',
-            name: 'Wallet',
-            component: () => import('../views/WalletView.vue'),
-            meta: { title: 'Credit Wallet', permission: 'wallet:view' },
-        },
-        {
-            path: '/associates',
-            name: 'Associates',
-            component: () => import('../views/AssociatesView.vue'),
-            meta: { title: 'Manage Associates', permission: 'associates:manage' },
-        },
-        {
-            path: '/reports',
-            name: 'Reports',
-            component: () => import('../views/ReportsView.vue'),
-            meta: { title: 'Sales Reports' },
+            meta: { title: 'New booking', permission: 'cargo-book' },
         },
         {
             path: '/cargo-bookings',
             name: 'CargoBookings',
             component: () => import('../views/cargo/CargoBookingsListView.vue'),
-            meta: { title: 'Cargo Consignments', permission: 'booking:read' },
+            meta: { title: 'Bookings', permission: 'booking:read' },
         },
         {
             path: '/cargo-bookings/:id',
             name: 'CargoBookingDetails',
             component: () => import('../views/cargo/CargoBookingDetailView.vue'),
-            meta: { title: 'Consignment Details' },
+            meta: { title: 'Booking' },
         },
         {
             // Receipts are printed from the profile via the shared thermal view
@@ -61,13 +42,13 @@ const router = createRouter({
             path: '/change-password',
             name: 'ChangePassword',
             component: () => import('../views/ChangePasswordView.vue'),
-            meta: { title: 'Change Password' },
+            meta: { title: 'Change password' },
         },
         {
             path: '/2fa-setup',
             name: 'TwoFactorSetup',
             component: () => import('../views/auth/TwoFactorSetupView.vue'),
-            meta: { title: '2FA Security Configuration' },
+            meta: { title: '2FA security' },
         },
         {
             path: '/:pathMatch(.*)*',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\AgentAccount;
@@ -15,6 +16,8 @@ use Illuminate\Support\Str;
 
 class AgentController extends Controller
 {
+    use SubmitsDualControl;
+
     protected FloatManagementService $floatService;
     protected \App\Services\DualControlService $dcService;
 
@@ -87,25 +90,19 @@ class AgentController extends Controller
             'is_active'         => 'boolean',
         ]);
 
-        if ($this->dcService->requiresDualControl('agent_update')) {
-            $dcReq = $this->dcService->submit('agent_update', 'agent', $agent->id, [
-                'before' => $agent->toArray(),
-                'after'  => $validated,
-            ]);
-            return back()->with('success', "Agency details update requires Maker-Checker approval (Request #{$dcReq->id} submitted).");
-        }
-
-        $agent->update([
+        // Always through dual control (agent_update), so the change is recorded and can be scheduled
+        $attributes = [
             'agency_name'       => $validated['agency_name'],
             'contact_mobile'    => $validated['contact_mobile'] ?? null,
             'address'           => $validated['address'] ?? null,
             'agent_type'        => $validated['agent_type'],
             'commission_method' => !empty($validated['commission_method']) ? $validated['commission_method'] : null,
-            'commission_rate'   => $validated['commission_rate'] !== null && $validated['commission_rate'] !== '' ? (float)$validated['commission_rate'] : null,
-            'is_active'         => $request->has('is_active') ? (bool)$request->is_active : $agent->is_active,
-        ]);
+            'commission_rate'   => ($validated['commission_rate'] ?? null) !== null && $validated['commission_rate'] !== '' ? (float) $validated['commission_rate'] : null,
+            'is_active'         => $request->has('is_active') ? (bool) $request->is_active : (bool) $agent->is_active,
+        ];
+        $before = $agent->only(array_keys($attributes));
 
-        return back()->with('success', 'Agency details updated successfully.');
+        return $this->submitChange($request, 'agent_update', 'agent', $agent->id, ['before' => $before, 'after' => $attributes], 'Agency details updated.');
     }
 
     public function updateFerries(Request $request, Agent $agent)
@@ -125,17 +122,10 @@ class AgentController extends Controller
             }
         }
 
-        if ($this->dcService->requiresDualControl('agent_ferries_update')) {
-            $dcReq = $this->dcService->submit('agent_ferries_update', 'agent', $agent->id, [
-                'before' => ['ferries' => $agent->ferries->mapWithKeys(fn($f) => [$f->id => ['status' => $f->pivot->status]])->toArray()],
-                'after'  => ['ferries' => $syncData],
-            ]);
-            return back()->with('success', "Assigned fleet update requires Maker-Checker approval (Request #{$dcReq->id} submitted).");
-        }
-
-        $agent->ferries()->sync($syncData);
-
-        return back()->with('success', 'Assigned fleet authorization updated successfully.');
+        return $this->submitChange($request, 'agent_ferries_update', 'agent', $agent->id, [
+            'before' => ['ferries' => $agent->ferries->mapWithKeys(fn ($f) => [$f->id => ['status' => $f->pivot->status]])->toArray()],
+            'after' => ['ferries' => $syncData],
+        ], 'Assigned fleet authorization updated.', null, ['subject_key' => "agent:{$agent->id}:ferries"]);
     }
 
     public function updateRoutes(Request $request, Agent $agent)
@@ -155,21 +145,10 @@ class AgentController extends Controller
             }
         }
 
-        logger()->info('Validated routes:', $validated['routes'] ?? []);
-        logger()->info('Syncing routes:', $syncData);
-
-        if ($this->dcService->requiresDualControl('agent_routes_update')) {
-            $dcReq = $this->dcService->submit('agent_routes_update', 'agent', $agent->id, [
-                'before' => ['routes' => $agent->routes->mapWithKeys(fn($r) => [$r->id => ['status' => $r->pivot->status]])->toArray()],
-                'after'  => ['routes' => $syncData],
-            ]);
-            return back()->with('success', "Assigned routes update requires Maker-Checker approval (Request #{$dcReq->id} submitted).");
-        }
-
-        $agent->routes()->sync($syncData);
-        logger()->info('Routes synced!');
-
-        return back()->with('success', 'Assigned routes authorization updated successfully.');
+        return $this->submitChange($request, 'agent_routes_update', 'agent', $agent->id, [
+            'before' => ['routes' => $agent->routes->mapWithKeys(fn ($r) => [$r->id => ['status' => $r->pivot->status]])->toArray()],
+            'after' => ['routes' => $syncData],
+        ], 'Assigned routes authorization updated.', null, ['subject_key' => "agent:{$agent->id}:routes"]);
     }
 
     public function topup(Request $request, Agent $agent)
@@ -255,10 +234,7 @@ class AgentController extends Controller
 
             $user->assignRole('associate_agent');
 
-            if (!empty($user->phone)) {
-                $sms = new \App\Services\SmsService();
-                $sms->sendSms($user->phone, "Welcome to Victoria Ferries. Your Associate account is created. Username: {$user->email}, Password: {$plainPassword}");
-            }
+            \App\Notifications\AccountCredentialsNotification::sendAfterCommit($user, $plainPassword);
         });
 
         return back()->with('success', 'Associate staff member registered successfully.');

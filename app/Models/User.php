@@ -130,6 +130,11 @@ class User extends Authenticatable implements CanResetPassword
         return $this->hasOne(Membership::class);
     }
 
+    public function activeShift(): HasOne
+    {
+        return $this->hasOne(Shift::class)->ofMany(['start_time' => 'max'], fn ($q) => $q->where('status', 'active'));
+    }
+
     // ── Accessors ────────────────────────────────────────────────
 
     public function getFullNameAttribute(): string

@@ -145,7 +145,9 @@
                     @foreach($consignment->items as $item)
                     <tr class="border-b border-dashed border-slate-200 last:border-0">
                         <td class="py-1.5 align-top">
-                            <div class="font-bold text-slate-900 uppercase truncate max-w-[100px]">{{ $item->cargoType?->name ?? 'Cargo' }}</div>
+                            <div class="font-bold text-slate-900 uppercase truncate max-w-[100px]">{{ (int) $item->quantity > 1 ? $item->quantity . ' × ' : '' }}{{ $item->cargoType?->name ?? 'Cargo' }}</div>
+                            @if($item->vehicle_reg_number)<div class="text-[8px] font-bold text-slate-700 font-mono-code">{{ $item->vehicle_reg_number }}</div>@endif
+                            @if((float) $item->value_charge > 0)<div class="text-[7px] text-slate-600">Value {{ number_format((float) $item->declared_value, 0) }} · charge {{ number_format((float) $item->value_charge, 0) }}</div>@endif
                             <div class="text-[7px] text-slate-500 font-mono-code">{{ $item->qr_code_token ?? 'N/A' }}</div>
                         </td>
                         <td class="py-1.5 align-top font-mono-code text-slate-700">
@@ -170,10 +172,24 @@
         <div class="px-4 py-3 border-b border-dashed border-slate-300">
             <div class="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Payment / Malipo</div>
             <div class="space-y-1">
+                @php $receiptDiscount = (float) $consignment->discount_amount; @endphp
                 <div class="flex justify-between items-center text-[10px]">
                     <span class="text-slate-500">Subtotal / Jumla Ndogo</span>
-                    <span class="font-bold text-slate-700 font-mono-code">{{ $totalPriceStr }}</span>
+                    <span class="font-bold text-slate-700 font-mono-code">{{ $receiptDiscount > 0 ? number_format($consignment->billing_amount + $receiptDiscount, 0) . ' ' . $consignment->billing_currency : $totalPriceStr }}</span>
                 </div>
+                @php $receiptValueCharge = (float) $consignment->items->sum('value_charge'); @endphp
+                @if($receiptValueCharge > 0)
+                <div class="flex justify-between items-center text-[10px]">
+                    <span class="text-slate-500">Incl. value charge / Ada ya Thamani</span>
+                    <span class="font-bold text-slate-700 font-mono-code">{{ number_format($receiptValueCharge, 0) }} {{ $consignment->billing_currency }}</span>
+                </div>
+                @endif
+                @if($receiptDiscount > 0)
+                <div class="flex justify-between items-center text-[10px]">
+                    <span class="text-slate-500">Discount / Punguzo</span>
+                    <span class="font-bold text-slate-700 font-mono-code">−{{ number_format($receiptDiscount, 0) }} {{ $consignment->billing_currency }}</span>
+                </div>
+                @endif
                 <div class="flex justify-between items-center text-[10px]">
                     <span class="text-slate-500">Method / Njia ya Malipo</span>
                     <span class="font-bold text-slate-700 text-right">{{ $paymentLabel }}</span>

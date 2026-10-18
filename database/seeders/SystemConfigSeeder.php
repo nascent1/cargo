@@ -56,7 +56,6 @@ class SystemConfigSeeder extends Seeder
 
             // SMS & Email
             ['key_name' => 'sms_enabled',                       'value' => '0',                                 'description' => 'Enable SMS notifications (requires Kilakona config)','group' => 'notification','is_sensitive' => false],
-            ['key_name' => 'sms_sender_id',                     'value' => 'FERRY',                             'description' => 'SMS sender ID',                                      'group' => 'notification','is_sensitive' => false],
             ['key_name' => 'email_notifications_enabled',       'value' => '0',                                 'description' => 'Enable email notifications for booking events',      'group' => 'notification','is_sensitive' => false],
             ['key_name' => 'high_value_cancellation_threshold', 'value' => '500000',                            'description' => 'Threshold amount (TZS) for sending admin alerts on cancellation', 'group' => 'notification','is_sensitive' => false],
             

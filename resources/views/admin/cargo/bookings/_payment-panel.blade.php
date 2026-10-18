@@ -286,6 +286,7 @@ document.addEventListener('alpine:init', () => {
             this.busy = true; this.notice = '';
             const p = await this.api('POST', `payments/${this.payment.uuid}/confirm`, { reference: this.reference, payer_msisdn: this.lipaPayer || null });
             this.busy = false;
+            if (p?.pending) { this.notice = p.message; return; } // confirmation awaits a checker (dual control)
             if (p) this.update(p);
         },
         async smsInstructions() {

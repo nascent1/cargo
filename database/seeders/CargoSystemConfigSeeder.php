@@ -33,12 +33,9 @@ class CargoSystemConfigSeeder extends Seeder
             ['group' => 'receipt', 'key_name' => 'receipt_show_qr',               'value' => '1',            'description' => 'Print QR code on receipt'],
             ['group' => 'receipt', 'key_name' => 'receipt_footer_text',           'value' => 'Thank you for using UCLP Cargo Services!', 'description' => 'Footer text on receipt'],
             // SMS
-            ['group' => 'sms', 'key_name' => 'sms_cargo_enabled',                'value' => '1',            'description' => 'Enable SMS notifications for cargo'],
             ['group' => 'sms', 'key_name' => 'sms_booking_confirmation_sender',   'value' => '1',            'description' => 'Send SMS to sender on booking confirmation'],
             ['group' => 'sms', 'key_name' => 'sms_booking_confirmation_receiver', 'value' => '1',            'description' => 'Send SMS to receiver on booking confirmation'],
-            // Tracking
-            ['group' => 'tracking', 'key_name' => 'tracking_public_url',          'value' => '/track',       'description' => 'Public tracking URL path'],
-            ['group' => 'tracking', 'key_name' => 'tracking_qr_base_url',         'value' => 'http://127.0.0.1:8001/track', 'description' => 'Base URL for QR code tracking links'],
+            // Tracking links use APP_URL from .env (+ /track); see App\Support\TrackingUrl
         ];
 
         foreach ($configs as $config) {

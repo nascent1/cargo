@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Channels\SmsChannel;
+use App\Support\DynamicMailConfig;
 use Illuminate\Support\Facades\Lang;
 
 class PasswordResetNotification extends Notification
@@ -22,7 +23,11 @@ class PasswordResetNotification extends Notification
 
     public function via($notifiable): array
     {
-        return ['mail', SmsChannel::class];
+        // SMS first, so a mail failure can't stop it; email only when mail is really delivered
+        return array_values(array_filter([
+            !empty($notifiable->phone) ? SmsChannel::class : null,
+            DynamicMailConfig::delivers() ? 'mail' : null,
+        ]));
     }
 
     public function toMail($notifiable): MailMessage
@@ -40,7 +45,8 @@ class PasswordResetNotification extends Notification
             ->line(Lang::get('If you did not request a password reset, no further action is required.'));
     }
 
-    public function toSms($notifiable): ?string
+    /** SMS policy event "password_reset_link" (template in Notifications › Templates). */
+    public function toSms($notifiable): ?array
     {
         if (!$notifiable->phone) {
             return null;
@@ -51,6 +57,10 @@ class PasswordResetNotification extends Notification
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false));
 
-        return "FerryBook: Reset your password by clicking here: {$url} . Link expires in " . config('auth.passwords.'.config('auth.defaults.passwords').'.expire') . " minutes.";
+        return ['event' => 'password_reset_link', 'data' => [
+            'first_name'      => $notifiable->first_name,
+            'reset_url'       => $url,
+            'expires_minutes' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire'),
+        ]];
     }
 }

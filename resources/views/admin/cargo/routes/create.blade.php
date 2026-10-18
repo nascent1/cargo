@@ -63,6 +63,8 @@
                 <input type="number" step="0.1" name="distance_nm" value="{{ old('distance_nm') }}" class="w-full rounded-xl border-slate-200 bg-slate-50 hover:bg-white focus:bg-white px-4 py-3.5 text-sm font-medium text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500 transition-colors" placeholder="e.g. 45.5">
             </div>
 
+            <x-dual-control.takes-effect op="route_create" class="mt-6" />
+
             <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end">
                 <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-colors flex items-center gap-2">
                     <i class="fas fa-check"></i> Submit Route

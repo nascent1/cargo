@@ -42,6 +42,7 @@
                                 <span class="px-3 py-1 rounded-full text-xs font-bold {{ $t->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">{{ $t->is_active ? 'Active' : 'Disabled' }}</span>
                             </td>
                             <td class="px-6 py-4 text-right">
+                                <x-dual-control.pending-badge subject="notification_template:{{ $t->event }}:{{ $t->channel }}:{{ $t->locale }}" class="mr-1" />
                                 <form action="{{ route('admin.notifications.toggle-template', $t) }}" method="POST" class="inline">@csrf
                                     <button class="text-xs {{ $t->is_active ? 'text-slate-400 hover:text-slate-600' : 'text-blue-600 hover:text-blue-800' }}">{{ $t->is_active ? 'Disable' : 'Enable' }}</button>
                                 </form>

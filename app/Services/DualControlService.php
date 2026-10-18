@@ -3,58 +3,103 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Models\DualControlConfig;
 use App\Models\DualControlRequest;
+use App\Models\SystemConfig;
+use App\Models\User;
+use App\Services\DualControl\DualControlException;
+use App\Services\DualControl\DualControlRegistry;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Dual Control (Maker-Checker) Service per SRS §5.6
+ *
+ * A change is submitted as a request. When its rule (dual_control_configs) is off, it is approved
+ * automatically; otherwise a checker approves it. Either way the request records who, what and when.
+ *
+ * Timing (config/dual_control.php):
+ *  - the maker may choose when the change takes effect (commence_at). Approved before that moment,
+ *    "scheduled" changes wait for dual-control:process; "dated" records (fares, exchange rates) are
+ *    written straight away with that start. Approved after it, the change applies at approval and
+ *    shows as commenced late.
+ *  - a record has at most one open (pending or scheduled) change at a time (subject_key).
  */
 class DualControlService
 {
+    public const HEARTBEAT_KEY = 'dual_control:heartbeat';
+
+    private const MASKED_KEYS = ['password', 'password_confirmation', 'plain_password', 'token', 'pin', 'secret'];
+
     public function requiresDualControl(string $operation): bool
     {
-        $config = \App\Models\DualControlConfig::where('operation_type', $operation)->first();
-        return $config ? (bool) $config->requires_dual_control : true;
+        $config = DualControlConfig::where('operation_type', $operation)->first();
+        if ($config) {
+            return (bool) $config->requires_dual_control;
+        }
+
+        // Not registered yet: the registry default, or approval required for anything unknown
+        if (!DualControlRegistry::has($operation)) {
+            Log::warning("Dual control: operation '{$operation}' has no rule and is not in the registry — approval required.");
+        }
+
+        return (bool) DualControlRegistry::get($operation)['default'];
     }
 
-    public function submit(string $operation, string $resourceType, int $resourceId, array $payload): DualControlRequest
+    /**
+     * Options:
+     *  - commence_at: when the change should take effect (null or past = as soon as approved)
+     *  - sealed:      dot-paths in payload['after'] holding secrets; stored encrypted, never shown
+     *  - subject_key: what the change is about when it isn't one record (defaults to "type:id")
+     *  - require_approval: wait for a checker even when the rule is off (e.g. a clerk's own shift extension)
+     */
+    public function submit(string $operation, string $resourceType, int $resourceId, array $payload, array $options = []): DualControlRequest
     {
-        return DB::transaction(function () use ($operation, $resourceType, $resourceId, $payload) {
-            $requiresDC = $this->requiresDualControl($operation);
+        return DB::transaction(function () use ($operation, $resourceType, $resourceId, $payload, $options) {
+            $requiresDC = !empty($options['require_approval']) || $this->requiresDualControl($operation);
             $makerId = Auth::id() ?? ($payload['after']['actor_id'] ?? 1);
 
-            $scrubber = function (?array $data) use (&$scrubber) {
-                if (!$data) return null;
-                $keys = ['password', 'password_confirmation', 'plain_password', 'token', 'pin', 'secret'];
-                foreach ($data as $k => $v) {
-                    if (in_array(strtolower($k), $keys)) $data[$k] = '********';
-                    elseif (is_array($v)) $data[$k] = $scrubber($v);
-                }
-                return $data;
-            };
+            $commenceAt = $options['commence_at'] ?? null;
+            if ($commenceAt && (!DualControlRegistry::canSchedule($operation) || !$commenceAt->isFuture())) {
+                $commenceAt = null;
+            }
+
+            $subjectKey = $options['subject_key'] ?? ($resourceId > 0 ? "{$resourceType}:{$resourceId}" : null);
+            if ($subjectKey && ($open = $this->openChangeFor($subjectKey))) {
+                throw new DualControlException($this->openChangeMessage($open));
+            }
 
             $request = DualControlRequest::create([
                 'maker_id' => $makerId,
                 'operation_type' => $operation,
                 'resource_type' => $resourceType,
                 'resource_id' => $resourceId,
-                'payload_before' => $scrubber($payload['before'] ?? null),
-                'payload_after' => $scrubber($payload['after'] ?? null),
-                'status' => $requiresDC ? 'pending' : 'approved',
-                'checker_id' => $requiresDC ? null : $makerId,
-                'checker_comment' => $requiresDC ? null : 'Auto-approved by system configuration.',
-                'resolved_at' => $requiresDC ? null : now(),
-                'expires_at' => now()->addHours((int) \App\Models\SystemConfig::getValue('dc_expiry_hours', 48)),
+                'subject_key' => $subjectKey,
+                'payload_before' => $this->scrub($payload['before'] ?? null),
+                'payload_after' => $this->scrub($this->seal($payload['after'] ?? null, $options['sealed'] ?? [])),
+                'commence_at' => $commenceAt,
+                'status' => 'pending',
+                'expires_at' => $this->expiryFor($commenceAt),
             ]);
 
             AuditLog::createEntry($makerId, 'create', 'dual_control_request', $request->id, null, $request->toArray(), request()->ip());
 
-            if (!$requiresDC) {
-                $this->executeApproval($request);
+            if ($requiresDC) {
+                DB::afterCommit(fn () => $this->notifyCheckers($request));
+            } else {
+                $request->update([
+                    'checker_id' => $makerId,
+                    'checker_comment' => 'Auto-approved by system configuration.',
+                    'resolved_at' => now(),
+                ]);
+                $this->dispatch($request);
             }
 
-            return $request;
+            return $request->fresh();
         });
     }
 
@@ -64,21 +109,26 @@ class DualControlService
         abort_if($request->status !== 'pending', 422, 'Request is not pending.');
         abort_if($request->isExpired(), 422, 'Request has expired.');
 
-        return DB::transaction(function () use ($request, $comment) {
+        $request = DB::transaction(function () use ($request, $comment) {
             $before = $request->toArray();
             $request->update([
                 'checker_id' => Auth::id(),
-                'status' => 'approved',
                 'checker_comment' => $comment,
                 'resolved_at' => now(),
             ]);
 
-            $this->executeApproval($request);
+            $this->dispatch($request);
 
             AuditLog::createEntry(Auth::id(), 'update', 'dual_control_request', $request->id, $before, $request->fresh()->toArray(), request()->ip());
 
             return $request->fresh();
         });
+
+        $this->notifyMaker($request, $request->status === 'scheduled'
+            ? 'Approved — takes effect ' . $request->commence_at->format('d M Y H:i')
+            : 'Approved and applied');
+
+        return $request;
     }
 
     public function reject(DualControlRequest $request, string $comment): DualControlRequest
@@ -86,7 +136,7 @@ class DualControlService
         abort_if($request->maker_id === Auth::id(), 403, 'Maker cannot reject their own request.');
         abort_if($request->status !== 'pending', 422, 'Request is not pending.');
 
-        return DB::transaction(function () use ($request, $comment) {
+        $request = DB::transaction(function () use ($request, $comment) {
             $before = $request->toArray();
             $request->update([
                 'checker_id' => Auth::id(),
@@ -99,23 +149,283 @@ class DualControlService
 
             return $request->fresh();
         });
+
+        $this->notifyMaker($request, 'Rejected: ' . $comment);
+
+        return $request;
     }
 
-    public function cancel(DualControlRequest $request): DualControlRequest
+    /**
+     * Withdraw a pending request or a scheduled change before it runs. The maker or a checker may do this.
+     */
+    public function cancel(DualControlRequest $request, ?string $reason = null): DualControlRequest
     {
-        abort_if($request->status !== 'pending', 422, 'Only pending requests can be cancelled.');
+        abort_unless(in_array($request->status, ['pending', 'scheduled'], true), 422, 'Only pending or scheduled requests can be cancelled.');
+        $user = Auth::user();
+        abort_unless($user && ($request->maker_id === $user->id || $user->hasPermission('dc:approve')), 403, 'Only the maker or a checker can cancel this request.');
 
-        return DB::transaction(function () use ($request) {
-            $request->update(['status' => 'cancelled', 'resolved_at' => now()]);
+        $request = DB::transaction(function () use ($request, $reason) {
+            $before = $request->toArray();
+            $request->update([
+                'status' => 'cancelled',
+                'resolved_at' => now(),
+                'failure_reason' => $reason ? 'Cancelled: ' . $reason : null,
+            ]);
+            AuditLog::createEntry(Auth::id(), 'update', 'dual_control_request', $request->id, $before, $request->fresh()->toArray(), request()->ip());
+
             return $request->fresh();
         });
+
+        if ($request->maker_id !== Auth::id()) {
+            $this->notifyMaker($request, 'Cancelled' . ($reason ? ': ' . $reason : ''));
+        }
+
+        return $request;
+    }
+
+    /**
+     * Scheduler tick: apply scheduled changes that are due, expire overdue pending requests.
+     *
+     * @return array{applied: int, failed: int, expired: int}
+     */
+    public function processDue(): array
+    {
+        $applied = $failed = 0;
+
+        $due = DualControlRequest::where('status', 'scheduled')->where('commence_at', '<=', now())->orderBy('commence_at')->get();
+        foreach ($due as $request) {
+            try {
+                DB::transaction(fn () => $this->apply($request));
+                $applied++;
+                $this->notifyMaker($request->fresh(), 'Applied as scheduled');
+            } catch (\Throwable $e) {
+                $failed++;
+                $reason = $e instanceof DualControlException ? $e->getMessage() : 'Could not be applied: ' . $e->getMessage();
+                $request->update(['status' => 'failed', 'failure_reason' => $reason]);
+                AuditLog::createEntry(null, 'update', 'dual_control_request', $request->id, null, ['status' => 'failed', 'failure_reason' => $reason], null);
+                $this->notifyMaker($request, 'Failed: ' . $reason);
+                if ($request->checker_id && $request->checker_id !== $request->maker_id) {
+                    $this->notify($request->checker_id, $request, 'Scheduled change failed', $reason);
+                }
+                if (!$e instanceof DualControlException) {
+                    report($e);
+                }
+            }
+        }
+
+        $expired = $this->expireStaleRequests();
+
+        // Approval SMS that were bundled during a checker's 10-minute window go out as one summary
+        try {
+            app(SmsNotifier::class)->sendBundledApprovals();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        Cache::forever(self::HEARTBEAT_KEY, now()->toIso8601String());
+
+        return ['applied' => $applied, 'failed' => $failed, 'expired' => $expired];
     }
 
     public function expireStaleRequests(): int
     {
-        return DualControlRequest::where('status', 'pending')
-            ->where('expires_at', '<', now())
-            ->update(['status' => 'expired', 'resolved_at' => now()]);
+        $stale = DualControlRequest::where('status', 'pending')->where('expires_at', '<', now())->get();
+        foreach ($stale as $request) {
+            $request->update(['status' => 'expired', 'resolved_at' => now()]);
+            $this->notifyMaker($request, 'Expired without approval');
+        }
+
+        return $stale->count();
+    }
+
+    /**
+     * True when dual-control:process ran recently (scheduled changes are being applied).
+     */
+    public static function schedulerAlive(): bool
+    {
+        $last = Cache::get(self::HEARTBEAT_KEY);
+
+        return $last && abs(now()->diffInMinutes(\Carbon\Carbon::parse($last))) <= (int) config('dual_control.heartbeat_minutes', 5);
+    }
+
+    public function openChangeFor(string $subjectKey): ?DualControlRequest
+    {
+        return DualControlRequest::with('maker')
+            ->where('subject_key', $subjectKey)
+            ->whereIn('status', ['pending', 'scheduled'])
+            ->where(fn ($q) => $q->where('status', 'scheduled')->orWhere('expires_at', '>', now()))
+            ->latest('id')
+            ->first();
+    }
+
+    public function openChangeMessage(DualControlRequest $open): string
+    {
+        $who = $open->maker?->full_name ?: 'another user';
+        $what = $open->status === 'scheduled'
+            ? 'a change scheduled for ' . $open->commence_at->format('d M Y H:i')
+            : 'a change awaiting approval';
+
+        return "This record already has {$what} (#DC-{$open->id}, by {$who}). Cancel it or wait for it before submitting another.";
+    }
+
+    /**
+     * What to tell the maker after submit().
+     */
+    public function outcomeMessage(DualControlRequest $request, string $appliedMessage): string
+    {
+        $when = $request->commence_at?->format('d M Y H:i');
+
+        return match ($request->status) {
+            'pending' => "Submitted for approval (#DC-{$request->id})" . ($when ? " — takes effect {$when} once approved." : ' — applies as soon as it is approved.'),
+            'scheduled' => "Scheduled (#DC-{$request->id}) — takes effect {$when}.",
+            default => $appliedMessage . ($when && $request->commence_at->isFuture() ? " It takes effect {$when}." : ''),
+        };
+    }
+
+    /**
+     * Decrypt sealed values (secrets) in a payload, for the handler that applies it.
+     */
+    public static function unseal(?array $data): ?array
+    {
+        if (!$data) {
+            return $data;
+        }
+        foreach ($data as $key => $value) {
+            if (self::isSealed($value)) {
+                $data[$key] = Crypt::decryptString($value['__sealed']);
+            } elseif (is_array($value)) {
+                $data[$key] = self::unseal($value);
+            }
+        }
+
+        return $data;
+    }
+
+    public static function isSealed(mixed $value): bool
+    {
+        return is_array($value) && array_key_exists('__sealed', $value);
+    }
+
+    /**
+     * Approved: apply now, or leave it for the scheduler when it takes effect later.
+     */
+    private function dispatch(DualControlRequest $request): void
+    {
+        $timing = DualControlRegistry::timing($request->operation_type);
+
+        if ($timing === 'scheduled' && $request->commence_at?->isFuture()) {
+            $request->update(['status' => 'scheduled']);
+
+            return;
+        }
+
+        $this->apply($request);
+    }
+
+    private function apply(DualControlRequest $request): void
+    {
+        $request->refresh();
+        $effectiveAt = $request->commence_at && $request->commence_at->isFuture() ? $request->commence_at : now();
+
+        $handler = DualControlRegistry::handler($request->operation_type);
+        if ($handler) {
+            app($handler)->execute($request, $effectiveAt);
+        } else {
+            $this->executeLegacy($request);
+        }
+
+        $request->update(['status' => 'approved', 'executed_at' => now(), 'failure_reason' => null]);
+    }
+
+    private function expiryFor(?CarbonInterface $commenceAt): CarbonInterface
+    {
+        $hours = (int) SystemConfig::getValue(config('dual_control.expiry_hours_key', 'dc_expiry_hours'), 48);
+
+        return ($commenceAt ? $commenceAt->copy() : now())->addHours($hours);
+    }
+
+    private function seal(?array $after, array $paths): ?array
+    {
+        foreach ($paths as $path) {
+            $value = data_get($after, $path);
+            if ($value !== null && $value !== '' && !is_array($value)) {
+                data_set($after, $path, ['__sealed' => Crypt::encryptString((string) $value)]);
+            }
+        }
+
+        return $after;
+    }
+
+    /**
+     * Mask secrets that weren't sealed so they never sit in plain text in a request or the audit log.
+     */
+    private function scrub(?array $data): ?array
+    {
+        if (!$data) {
+            return $data;
+        }
+        foreach ($data as $key => $value) {
+            if (self::isSealed($value)) {
+                continue;
+            }
+            if (is_array($value)) {
+                $data[$key] = $this->scrub($value);
+            } elseif (is_string($key) && $this->isSecretKey($key) && $value !== null && $value !== '') {
+                $data[$key] = '********';
+            }
+        }
+
+        return $data;
+    }
+
+    private function isSecretKey(string $key): bool
+    {
+        $key = strtolower($key);
+
+        return in_array($key, self::MASKED_KEYS, true)
+            || str_contains($key, 'password') || str_contains($key, 'secret') || str_ends_with($key, 'api_key') || str_ends_with($key, '_token');
+    }
+
+    private function notifyCheckers(DualControlRequest $request): void
+    {
+        $label = DualControlRegistry::label($request->operation_type);
+        $maker = $request->maker?->full_name ?: 'A user';
+        $when = $request->commence_at ? ' (takes effect ' . $request->commence_at->format('d M Y H:i') . ')' : '';
+
+        $notifier = app(SmsNotifier::class);
+        User::where('status', 'active')->where('id', '!=', $request->maker_id)
+            ->where(fn ($q) => $q->whereNull('domain')->orWhere('domain', '!=', 'agent'))->get()
+            ->filter(fn (User $u) => $u->hasPermission('dc:approve'))
+            ->each(function (User $u) use ($request, $label, $maker, $when, $notifier) {
+                $this->notify($u->id, $request, "Approval needed: {$label}", "{$maker} submitted #DC-{$request->id}{$when}.");
+                // SMS too (SMS policy: dual_control_request; one per checker per 10 minutes, later ones bundled)
+                try {
+                    $notifier->approvalNeeded($u, $request);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            });
+    }
+
+    private function notifyMaker(DualControlRequest $request, string $what): void
+    {
+        $this->notify($request->maker_id, $request, DualControlRegistry::label($request->operation_type) . " — #DC-{$request->id}", $what);
+    }
+
+    private function notify(?int $userId, DualControlRequest $request, string $title, string $body): void
+    {
+        $user = $userId ? User::find($userId) : null;
+        if (!$user) {
+            return;
+        }
+        try {
+            app(NotificationService::class)->send($user, 'dual_control', 'in_app', $title, $body, [
+                'url' => route('admin.dual-control.show', $request->id, false),
+                'request_id' => $request->id,
+            ]);
+        } catch (\Throwable $e) {
+            report($e); // a notification failure must never undo the change
+        }
     }
 
     private function resolveModelClass(string $resourceType): ?string
@@ -139,6 +449,7 @@ class DualControlService
             'promotion' => \App\Models\Promotion::class,
             'coupon' => \App\Models\Coupon::class,
             'ferry_class' => \App\Models\FerryClass::class,
+            'station' => \App\Models\Station::class,
             'cargo_station' => \App\Models\Station::class,
             'cargo_route' => \App\Models\Route::class,
             'cargo_transport_unit' => \App\Models\TransportUnit::class,
@@ -147,7 +458,11 @@ class DualControlService
         return $map[$resourceType] ?? null;
     }
 
-    private function executeApproval(DualControlRequest $request): void
+    /**
+     * The original executor, kept for operations that have no handler in config/dual_control.php
+     * (lookups, users, agents and the legacy ferry actions).
+     */
+    private function executeLegacy(DualControlRequest $request): void
     {
         if ($request->operation_type === 'float_topup' || $request->operation_type === 'agent_topup') {
             $account = \App\Models\AgentAccount::find($request->resource_id);
@@ -215,10 +530,8 @@ class DualControlService
                 $user->assignRole('agent');
                 $request->update(['resource_id' => $agent->id]);
 
-                if (!empty($user->phone)) {
-                    $sms = new \App\Services\SmsService();
-                    $sms->sendSms($user->phone, "Welcome to Victoria Ferries. Your Agent account is created. Username: {$user->email}, Password: {$plainPassword}");
-                }
+                // Login details by SMS (SMS policy: account_credentials) and email, after commit
+                \App\Notifications\AccountCredentialsNotification::sendAfterCommit($user, $plainPassword);
             });
             return;
         } elseif ($request->operation_type === 'ferry_create') {
@@ -396,9 +709,8 @@ class DualControlService
                 ]);
             }
 
-            if ($model instanceof \App\Models\User && !empty($model->phone) && !empty($plainPassword)) {
-                $sms = new \App\Services\SmsService();
-                $sms->sendSms($model->phone, "Welcome to Victoria Ferries. Your account is created. Username: {$model->email}, Password: {$plainPassword}");
+            if ($model instanceof \App\Models\User && !empty($plainPassword)) {
+                \App\Notifications\AccountCredentialsNotification::sendAfterCommit($model, $plainPassword);
             }
 
             if ($request->operation_type === 'promotion_create') {
