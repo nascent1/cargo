@@ -85,6 +85,7 @@
                     <div class="flex flex-1 items-center">
                         <h1 class="text-lg font-bold text-white">{{ $header ?? 'Dashboard' }}</h1>
                     </div>
+                    <x-admin.exchange-rate-chip />
                     <!-- Notifications Bell -->
                     <div x-data="{
                         open: false,
@@ -261,6 +262,9 @@
     {{-- Confirm dialog: confirmDialog({...}) / <form data-confirm="…"> — never the browser's confirm() --}}
     <x-admin.confirm-dialog />
 
+    {{-- USD→TZS rate prompt: forced when the rate is due, otherwise opened from the header chip --}}
+    <x-admin.exchange-rate-prompt />
+
     <script>
         window.notify = function(text, type = 'error') {
             type = (type || 'error').toLowerCase();
@@ -271,39 +275,6 @@
     
     @livewireScripts
     @stack('scripts')
-
-    @if(session('force_exchange_modal'))
-        <div class="fixed inset-0 z-[99999] flex items-center justify-center bg-surface-900/80 backdrop-blur-sm p-4">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-[fadeIn_0.3s_ease-out]">
-                <div class="bg-amber-50 px-6 py-4 border-b border-amber-100 flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                        <i class="fas fa-exclamation-triangle text-lg"></i>
-                    </div>
-                    <div>
-                        @php
-                            $freqDays = (int) \App\Models\SystemConfig::getValue('exchange_rate_update_frequency', 1);
-                            $freqLabel = $freqDays === 1 ? 'Daily' : "Every {$freqDays} Days";
-                        @endphp
-                        <h3 class="font-bold text-amber-900">{{ $freqLabel }} Exchange Rate Required</h3>
-                        <p class="text-xs text-amber-700 mt-0.5">Please update the USD to TZS exchange rate.</p>
-                    </div>
-                </div>
-                <form action="{{ route('admin.settings.update') }}" method="POST" class="p-6">
-                    @csrf
-                    <div class="mb-5">
-                        <label class="block text-sm font-semibold text-surface-700 mb-1">Current USD to TZS Rate</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-surface-400 font-semibold">TZS</span>
-                            <input type="number" step="0.01" name="settings[usd_to_tzs_exchange_rate]" value="{{ \App\Models\SystemConfig::getValue('usd_to_tzs_exchange_rate', '2600') }}" required class="block w-full rounded-lg border-surface-300 pl-12 pr-3 py-2.5 text-sm focus:border-brand-500 focus:ring-brand-500 shadow-sm" />
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
-                        <i class="fas fa-save"></i> Save Exchange Rate
-                    </button>
-                </form>
-            </div>
-        </div>
-    @endif
 
     @stack('modals')
 </body>

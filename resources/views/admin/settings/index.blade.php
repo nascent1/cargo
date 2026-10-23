@@ -11,11 +11,16 @@
             'default_shift_hours' => [0.5, 24, 0.5, 'hours'],
             'shift_rest_hours' => [0, 24, 0.5, 'hours'],
             'shift_warning_minutes' => [0, 120, 5, 'minutes'],
+            'exchange_rate_update_frequency' => [0, 365, 1, 'days'],
         ];
         // key => [label, help] where the stored wording no longer fits
         $settingText = [
             'shift_rest_hours' => ['Minimum Break Between Shifts', 'A new shift may start from midnight after the day the last one started, and never sooner than this many hours after it ended (0 = from midnight). Sooner needs an approved extension.'],
+            'exchange_rate_update_frequency' => ['Exchange Rate Update Frequency', 'How often the USD to TZS rate must be set: 0 = never ask, 1 = daily, 7 = weekly. Everyone with "Keep the exchange rate up to date" (Roles) is asked when it is due.'],
+            'usd_to_tzs_exchange_rate' => ['USD to TZS Rate', 'The rate in force today, from Exchange Rates. Set it from the rate prompt or under Exchange Rates.'],
+            'exchange_rate_last_updated' => ['Exchange Rate Last Set', 'When today\'s rate was last set, and when it is next due.'],
         ];
+        $rateStatus = \App\Services\ExchangeRateService::updateStatus();
     @endphp
 
     <!-- General Settings Content -->
@@ -90,6 +95,24 @@
                                                 name="settings[{{ $setting->key_name }}]"
                                                 value="{{ $setting->value }}" required
                                                 class="block w-full rounded-xl border border-slate-300 py-2.5 px-4 text-surface-900 ring-1 ring-inset ring-surface-200 focus:ring-2 focus:ring-brand-500 sm:text-sm shadow-sm bg-white transition-all">
+                                        @elseif($setting->key_name === 'usd_to_tzs_exchange_rate')
+                                            {{-- Read-only: a rate is dated and goes through dual control (rate prompt / Exchange Rates) --}}
+                                            <div class="flex items-center justify-end gap-3 text-sm">
+                                                <div class="text-right">
+                                                    <div class="font-bold text-surface-900 tabular-nums">TZS {{ rtrim(rtrim(number_format($rateStatus['rate'], 2), '0'), '.') }} <span class="font-normal text-surface-500">/ USD</span></div>
+                                                    <div class="text-xs text-surface-500">{{ $rateStatus['since'] ? 'since ' . \Carbon\Carbon::parse($rateStatus['since'])->format('j M Y') : 'default (no rate under Exchange Rates)' }}</div>
+                                                </div>
+                                                @if(auth()->user()->hasPermission('exchange_rate:maintain'))
+                                                    <button type="button" @click="$dispatch('exchange-rate-open')" class="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Set today's rate</button>
+                                                @endif
+                                            </div>
+                                        @elseif($setting->key_name === 'exchange_rate_last_updated')
+                                            <div class="text-right text-sm">
+                                                <div class="font-semibold text-surface-900">{{ $rateStatus['last_updated'] && $rateStatus['last_updated'] > '2000-01-01' ? \Carbon\Carbon::parse($rateStatus['last_updated'])->format('j M Y') : 'Never' }}</div>
+                                                <div class="text-xs {{ $rateStatus['due'] ? 'font-semibold text-amber-700' : 'text-surface-500' }}">
+                                                    {{ $rateStatus['due_on'] ? ($rateStatus['due'] ? 'Due now' : 'Next due ' . \Carbon\Carbon::parse($rateStatus['due_on'])->format('j M Y')) : 'Not asked (frequency 0)' }}
+                                                </div>
+                                            </div>
                                         @elseif(isset($numericSettings[$setting->key_name]))
                                             @php [$min, $max, $step, $unit] = $numericSettings[$setting->key_name]; @endphp
                                             <div class="flex items-center gap-2">

@@ -204,9 +204,6 @@
             </form>
         </div>
     </div>
-    
-    </div>
-
 
     {{-- Edit Role Modal --}}
     <div x-show="showEditModal" x-cloak
@@ -278,6 +275,7 @@
             </form>
         </div>
     </div>
+    </div>{{-- x-data: the Edit / Delete modals need its state --}}
 
     <style>
         .custom-scrollbar::-webkit-scrollbar {

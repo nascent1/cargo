@@ -76,7 +76,7 @@
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-100">
                 <div>
                     <h3 class="text-base font-bold text-surface-900">Current & Historical Rates</h3>
-                    <p class="text-xs text-surface-400 mt-0.5">All rates are relative to TZS as the base currency.</p>
+                    <p class="text-xs text-surface-400 mt-0.5">All rates are relative to TZS. Conversions use the rate in force on the day; a rate dated ahead starts on its date.</p>
                 </div>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-50 text-brand-700 border border-brand-100">
                     <i class="fas fa-anchor text-xs"></i> Base: TZS
@@ -109,6 +109,14 @@
                             </td>
                             <td class="px-4 py-3.5 text-sm text-surface-600">
                                 {{ $rate->effective_from->format('M d, Y') }}
+                                @if ($rate->effective_to)
+                                    <span class="text-xs text-surface-400">– {{ $rate->effective_to->format('M d, Y') }}</span>
+                                @endif
+                                @if (in_array($rate->id, $inForceIds, true))
+                                    <span class="ml-1 inline-flex px-1.5 py-px rounded border text-[10px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-700 border-emerald-200">In force</span>
+                                @elseif ($rate->effective_from->isFuture())
+                                    <span class="ml-1 inline-flex px-1.5 py-px rounded border text-[10px] font-bold uppercase tracking-wide bg-sky-50 text-sky-700 border-sky-200">Upcoming</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3.5 text-xs text-surface-500">
                                 {{ $rate->creator?->name ?? 'System' }}

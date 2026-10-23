@@ -110,7 +110,7 @@
                                                             <span class="font-bold tabular-nums text-surface-900" x-text="CargoUI.num(t.cells[r.id].fare.rate)"></span>
                                                             <span class="text-[11px] text-surface-500" x-text="`/ ${t.unit_label}`"></span>
                                                             <span x-show="t.cells[r.id].fare.value_charge_pct > 0" class="ml-1 text-[10px] font-bold text-violet-700 bg-violet-50 rounded px-1" x-text="`+${t.cells[r.id].fare.value_charge_pct}%`"></span>
-                                                            <div x-show="t.cells[r.id].fare.missing_rate" class="text-[11px] font-semibold text-red-700"><i class="fas fa-circle-exclamation"></i> No rate — books free</div>
+                                                            <div x-show="t.cells[r.id].fare.missing_rate" class="text-[11px] font-semibold text-red-700"><i class="fas fa-circle-exclamation"></i> No rate — not bookable</div>
                                                             <div x-show="t.cells[r.id].fare.until" class="text-[11px] text-amber-700" x-text="`until ${CargoUI.dateTime(endShown(t.cells[r.id].fare.until))}`"></div>
                                                         </div>
                                                     </template>
@@ -165,7 +165,7 @@
                             <td class="px-5 py-3">
                                 <a :href="`/admin/cargo/types/${f.cargo_type_id}`" class="font-semibold text-surface-900 hover:text-brand-700" x-text="f.cargo_type?.name"></a>
                                 <div class="text-[11px] text-surface-500" x-text="`v${f.version} · per ${unitLabel(f.cargo_type?.measurement_unit)}`"></div>
-                                <div x-show="f.missing_rate" class="text-[11px] font-semibold text-red-700"><i class="fas fa-circle-exclamation"></i> No rate — books free</div>
+                                <div x-show="f.missing_rate" class="text-[11px] font-semibold text-red-700"><i class="fas fa-circle-exclamation"></i> No rate — not bookable</div>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex px-2 py-0.5 rounded-md bg-brand-50 text-brand-800 border border-brand-100 text-[11px] font-bold font-mono" x-text="f.route?.code || '—'"></span>

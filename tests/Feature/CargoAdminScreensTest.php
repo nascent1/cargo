@@ -35,6 +35,7 @@ class CargoAdminScreensTest extends TestCase
             ?? $this->markTestSkipped('Needs an admin user in the database.');
 
         SystemConfig::setValue('sms_enabled', '0'); // no customer SMS from tests
+        SystemConfig::setValue('exchange_rate_last_updated', today()->toDateString()); // admins are asked for the rate when it's due
     }
 
     private function asAdmin()

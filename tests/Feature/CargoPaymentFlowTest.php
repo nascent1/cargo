@@ -43,6 +43,7 @@ class CargoPaymentFlowTest extends TestCase
         SystemConfig::setValue('cargo_ussd_timeout_minutes', '15');
         SystemConfig::setValue('cargo_ussd_max_pushes', '3');
         SystemConfig::setValue('sms_enabled', '0'); // no customer SMS from tests
+        SystemConfig::setValue('exchange_rate_last_updated', today()->toDateString()); // admins are asked for the rate when it's due
         PaymentMethod::where('slug', 'lipa_namba')->update(['account_number' => '123456', 'account_name' => 'UCLP CARGO', 'is_active' => true]);
     }
 

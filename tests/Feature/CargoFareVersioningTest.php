@@ -201,6 +201,31 @@ class CargoFareVersioningTest extends TestCase
         $this->assertNotContains($unpriced->id, $priced);
     }
 
+    public function test_a_fare_without_a_rate_for_its_pricing_basis_is_not_bookable(): void
+    {
+        // Legacy shape: a per-cbm type whose fare only has a flat price
+        $noRate = CargoType::create(['name' => 'No rate ' . Str::random(4), 'code' => 'NR' . strtoupper(Str::random(6)),
+            'category' => 'electronics', 'measurement_unit' => 'cbm', 'status' => 'active']);
+        CargoFare::create(['cargo_type_id' => $noRate->id, 'route_id' => $this->service->route_id,
+            'price_tzs' => 50000, 'price_usd' => 0, 'status' => 'active', 'effective_from' => now()->subDay()]);
+
+        $services = $this->as($this->admin)->getJson('/admin/cargo/api/booking/available-services?date=' . $this->service->departure_date)->assertOk()->json();
+        $priced = collect($services)->firstWhere('id', $this->service->id)['priced_type_ids'];
+        $this->assertContains($this->type->id, $priced);
+        $this->assertNotContains($noRate->id, $priced);
+
+        // The server refuses the line too, instead of pricing it at 0
+        $this->as($this->admin)->postJson('/admin/cargo/api/booking/quote', ['transport_service_id' => $this->service->id,
+            'items' => [['cargo_type_id' => $noRate->id, 'quantity' => 1, 'length_m' => 1, 'width_m' => 1, 'height_m' => 1]]])
+            ->assertStatus(422)->assertJsonValidationErrors(['items.0.cargo_type_id']);
+
+        // A vessel fare with no rate hides the type on that vessel even when the route-wide fare is priced
+        CargoFare::create(['cargo_type_id' => $this->type->id, 'route_id' => $this->service->route_id, 'transport_unit_id' => $this->service->transport_unit_id,
+            'price_tzs' => 0, 'price_usd' => 0, 'status' => 'active', 'effective_from' => now()->subDay()]);
+        $this->assertNotContains($this->type->id, app(\App\Services\Cargo\CargoFareCalculator::class)
+            ->pricedTypeIds($this->service->route_id, $this->service->transport_unit_id));
+    }
+
     public function test_with_the_rule_on_a_fare_waits_for_a_checker_and_starts_as_requested(): void
     {
         DualControlConfig::where('operation_type', 'cargo_fare_create')->update(['requires_dual_control' => true]);

@@ -31,15 +31,17 @@ window.CargoUI = (() => {
             },
             body: body === undefined ? undefined : JSON.stringify(body),
         });
-        // A redirect (e.g. the daily exchange-rate prompt) or an HTML page is not an API answer
+        // A redirect or an HTML page (e.g. the sign-in page) is not an API answer
         if (res.redirected || !(res.headers.get('content-type') || '').includes('json')) {
-            const err = new Error('The server asked for something first — reload the page (for example, to enter today\'s exchange rate).');
+            const err = new Error('The server asked for something first — reload the page.');
             err.status = res.status;
             err.errors = {};
             throw err;
         }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
+            // The exchange rate is due: open the rate prompt (the request can be retried once it is set)
+            if (res.status === 423 && data.exchange_rate_due) window.dispatchEvent(new CustomEvent('exchange-rate-due'));
             const err = new Error(data.message || `Request failed (${res.status})`);
             err.status = res.status;
             err.errors = data.errors || {};

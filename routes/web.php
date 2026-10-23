@@ -158,6 +158,9 @@ Route::middleware('auth')->group(function () {
     // ── Admin Panel ────────────────────────────────────────────────
     Route::prefix('admin')->name('admin.')->middleware(['admin.access', \App\Http\Middleware\TwoFactorMiddleware::class, \App\Http\Middleware\ForceExchangeRateUpdate::class])->group(function () {
 
+        // Today's exchange rate from the rate prompt / header chip (exempt from ForceExchangeRateUpdate)
+        Route::post('/exchange-rate/current', [\App\Http\Controllers\Admin\ExchangeRateController::class, 'setCurrent'])->name('exchange-rate.current')->middleware('permission:exchange_rate:maintain');
+
         // 2FA Routes
         Route::get('2fa-setup', [TwoFactorController::class, 'setup'])->name('2fa.setup');
         Route::post('2fa-confirm', [TwoFactorController::class, 'confirm'])->name('2fa.confirm');

@@ -69,4 +69,30 @@ class SystemSettingsUpdateTest extends TestCase
         $this->assertTrue(DualControlRequest::where('operation_type', 'setting_update')->where('status', 'pending')
             ->where('payload_after->key_name', 'sms_enabled')->exists());
     }
+
+    public function test_a_role_can_be_renamed_and_its_permissions_changed(): void
+    {
+        DualControlConfig::whereIn('operation_type', ['role_update', 'role_permissions_update'])->update(['requires_dual_control' => false]);
+        $role = \App\Models\Role::where('slug', 'associate_agent')->first() ?? $this->markTestSkipped('Needs the associate_agent role.');
+        $permission = \App\Models\Permission::where('name', 'audit:read')->firstOrFail();
+        $as = fn () => $this->actingAs($this->admin)->withSession(['2fa_verified' => true])->from('/admin/settings/roles');
+
+        // The Edit / Delete modals sit inside the component that holds their state (outside it, Edit did nothing)
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML($as()->get('/admin/settings/roles')->assertOk()->getContent());
+        libxml_clear_errors();
+        $xpath = new \DOMXPath($dom);
+        foreach (['showEditModal', 'showDeleteModal'] as $modal) {
+            $this->assertSame(1, $xpath->query("//*[contains(@x-data, 'editRole:')]//*[@x-show='{$modal}']")->length, "{$modal} is outside the roles component");
+        }
+
+        $as()->put("/admin/settings/roles/{$role->id}", ['display_name' => 'Associate Agent (renamed)', 'description' => 'Changed in a test'])
+            ->assertRedirect(route('admin.settings.roles'))->assertSessionHasNoErrors();
+        $this->assertSame('Associate Agent (renamed)', $role->fresh()->display_name);
+
+        $ids = $role->permissions()->pluck('permissions.id')->push($permission->id)->unique()->all();
+        $as()->post("/admin/settings/roles/{$role->id}/permissions", ['permissions' => $ids])->assertRedirect(route('admin.settings.roles'));
+        $this->assertTrue($role->fresh()->permissions->contains('id', $permission->id));
+    }
 }

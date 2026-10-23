@@ -104,7 +104,6 @@
         <span v-if="cargo.lineQuote(line).value_charge > 0">Value charge: {{ num(cargo.lineQuote(line).value_charge) }}</span>
         <span v-if="cargo.lineQuote(line).discount_amount > 0" class="text-emerald-700">Discount −{{ num(cargo.lineQuote(line).discount_amount) }}</span>
       </div>
-      <p v-if="cargo.lineQuote(line)?.warning" class="text-xs font-semibold text-red-700"><i class="fas fa-circle-exclamation mr-1"></i>{{ cargo.lineQuote(line).warning }}</p>
     </div>
 
     <button type="button" class="w-full h-12 rounded-2xl border-2 border-dashed border-slate-300 hover:border-brand-400 hover:bg-brand-50/40 text-sm font-semibold text-slate-700" @click="cargo.addLine()">

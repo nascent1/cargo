@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\ExchangeRate;
 use App\Models\Currency;
+use App\Services\ExchangeRateService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -17,7 +18,10 @@ class ExchangeRateController extends Controller
     {
         $rates = ExchangeRate::with('creator')->orderByDesc('effective_from')->paginate(15);
         $currencies = Currency::where('is_active', true)->get();
-        return view('admin.exchange-rates.index', compact('rates', 'currencies'));
+        // The entry each currency converts at today
+        $inForceIds = $rates->pluck('from_currency')->unique()->reject(fn ($c) => $c === 'TZS')
+            ->map(fn ($c) => ExchangeRateService::inForce($c)?->id)->filter()->all();
+        return view('admin.exchange-rates.index', compact('rates', 'currencies', 'inForceIds'));
     }
 
     /**
@@ -33,18 +37,38 @@ class ExchangeRateController extends Controller
             'effective_from' => 'required|date',
             'effective_to' => 'nullable|date|after_or_equal:effective_from',
         ]);
-        $from = strtoupper($validated['from_currency']);
-        $to = strtoupper($validated['to_currency']);
-        $date = Carbon::parse($validated['effective_from'])->toDateString();
 
+        return $this->submitRate($request, strtoupper($validated['from_currency']), strtoupper($validated['to_currency']), (float) $validated['rate'],
+            Carbon::parse($validated['effective_from'])->toDateString(), $validated['effective_to'] ?? null, route('admin.settings.exchange-rates.index'));
+    }
+
+    /**
+     * Today's USD→TZS rate from the rate prompt or the header chip (JSON). Open to everyone who keeps the rate
+     * up to date (exchange_rate:maintain), so finance can set it without the Settings permission.
+     */
+    public function setCurrent(Request $request)
+    {
+        $validated = $request->validate(['rate' => 'required|numeric|min:1|max:1000000']);
+
+        return $this->submitRate($request, 'USD', 'TZS', (float) $validated['rate'], today()->toDateString(), null);
+    }
+
+    private function submitRate(Request $request, string $from, string $to, float $rate, string $date, ?string $until, ?string $redirect = null)
+    {
         $existing = ExchangeRate::where('from_currency', $from)->where('to_currency', $to)->whereDate('effective_from', $date)->first();
-        $after = ['from_currency' => $from, 'to_currency' => $to, 'rate' => (float) $validated['rate'], 'effective_from' => $date, 'effective_to' => $validated['effective_to'] ?? null];
+        $after = ['from_currency' => $from, 'to_currency' => $to, 'rate' => $rate, 'effective_from' => $date, 'effective_to' => $until];
         $start = Carbon::parse($date)->startOfDay();
+
+        // Today's USD→TZS rate is the periodic update, even while it waits for a checker
+        // (a refused submit means a rate for today was already submitted, which counts too)
+        if ($from === 'USD' && $to === 'TZS' && $start->isToday()) {
+            ExchangeRateService::markUpdated();
+        }
 
         return $this->submitChange($request, 'exchange_rate_create', 'exchange_rate', $existing?->id ?? 0, [
             'before' => $existing ? ['rate' => (float) $existing->rate, 'effective_to' => $existing->effective_to ? Carbon::parse($existing->effective_to)->toDateString() : null] : null,
             'after' => $after,
-        ], $existing ? 'Exchange rate replaced.' : 'Exchange rate saved.', route('admin.settings.exchange-rates.index'), [
+        ], $existing ? 'Exchange rate replaced.' : 'Exchange rate saved.', $redirect, [
             'subject_key' => "exchange_rate:{$from}-{$to}:{$date}",
             'commence_at' => $start->isFuture() ? $start : null,
         ]);

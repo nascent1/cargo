@@ -45,13 +45,9 @@
             <div class="px-8 pt-7 pb-8">
 
                 <div class="flex flex-col items-center mb-7">
-                    <div class="h-14 w-14 rounded-2xl flex items-center justify-center mb-4 shadow-xl"
-                        style="background: linear-gradient(135deg, #FABD00 0%, #f59e0b 100%);">
-                        <i class="fas fa-ship text-xl" style="color: #78350f"></i>
-                    </div>
-                    <div class="flex justify-center mb-2">
-                        <img src="{{ asset('images/logo.png') }}" alt="Logo"
-                            class="h-10 w-auto object-contain drop-shadow-sm"
+                    <div class="flex justify-center mb-3">
+                        <img src="{{ asset('images/logo.png') }}" alt="Mafia Fast Ferries"
+                            class="h-20 w-auto object-contain drop-shadow-sm"
                             onerror="this.style.display='none'">
                     </div>
                     <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mt-1">Booking Platform</p>

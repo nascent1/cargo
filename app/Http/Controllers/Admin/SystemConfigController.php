@@ -22,7 +22,11 @@ class SystemConfigController extends Controller
         'default_shift_hours' => 'numeric|min:0.5|max:24',
         'shift_rest_hours' => 'numeric|min:0|max:24',
         'shift_warning_minutes' => 'integer|min:0|max:120',
+        'exchange_rate_update_frequency' => 'integer|min:0|max:365',
     ];
+
+    /** Shown on the General tab but set from the rate prompt / Exchange Rates (dated, through dual control). */
+    private const SET_ELSEWHERE = ['usd_to_tzs_exchange_rate', 'exchange_rate_last_updated'];
 
     /**
      * General settings tab (system_configs table).
@@ -52,26 +56,10 @@ class SystemConfigController extends Controller
         $blocked = [];
 
         foreach ($validated['settings'] as $key => $value) {
-            $config = SystemConfig::where('key_name', $key)->first();
-            
-            // Special case: if saving usd_to_tzs_exchange_rate (even if unchanged), update the timestamp
-            if ($key === 'usd_to_tzs_exchange_rate') {
-                $lastUpdatedConfig = SystemConfig::where('key_name', 'exchange_rate_last_updated')->first();
-                if (!$lastUpdatedConfig || $lastUpdatedConfig->value !== today()->toDateString()) {
-                    // Update the timestamp directly to prevent the admin from being locked out
-                    // while waiting for dual control approval of the rate change itself.
-                    SystemConfig::updateOrCreate(
-                        ['key_name' => 'exchange_rate_last_updated'],
-                        [
-                            'display_name' => 'Exchange Rate Last Updated',
-                            'value' => today()->toDateString(),
-                            'group' => 'financial',
-                            'data_type' => 'date',
-                            'description' => 'Last time the exchange rate was updated.'
-                        ]
-                    );
-                }
+            if (in_array($key, self::SET_ELSEWHERE, true)) {
+                continue;
             }
+            $config = SystemConfig::where('key_name', $key)->first();
 
             if ($config && $config->value !== $value) {
                 $operationType = ($key === 'commission_default_method') ? 'commission_method_update' : 'setting_update';

@@ -56,7 +56,7 @@
                             @if ($cur)
                                 <span class="font-bold text-slate-900">{{ $fareService->priceLabel($type, $cur->prices()) }}</span>
                                 <div class="text-[11px] text-slate-500">v{{ $cur->version }} since {{ $cur->effective_from->format('d M Y') }}</div>
-                                @if ($cur->basisRate($type->measurement_unit) <= 0)<div class="text-[11px] font-semibold text-red-700">No rate — books free</div>@endif
+                                @if ($cur->basisRate($type->measurement_unit) <= 0)<div class="text-[11px] font-semibold text-red-700">No rate — not bookable</div>@endif
                             @else
                                 <span class="text-xs font-semibold text-red-700"><i class="fas fa-ban"></i> Not bookable</span>
                             @endif

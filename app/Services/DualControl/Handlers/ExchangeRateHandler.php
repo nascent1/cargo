@@ -4,9 +4,11 @@ namespace App\Services\DualControl\Handlers;
 
 use App\Models\DualControlRequest;
 use App\Models\ExchangeRate;
+use App\Models\SystemConfig;
 use App\Services\DualControl\DualControlException;
 use App\Services\DualControl\DualControlHandler;
 use App\Services\DualControl\StaleChangeGuard;
+use App\Services\ExchangeRateService;
 use Carbon\CarbonInterface;
 
 class ExchangeRateHandler implements DualControlHandler
@@ -37,5 +39,10 @@ class ExchangeRateHandler implements DualControlHandler
             ['rate' => $a['rate'], 'effective_to' => $a['effective_to'] ?? null, 'created_by' => $request->maker_id],
         );
         $request->update(['resource_id' => $rate->id]);
+
+        // The setting is only the fallback, but keep it on the USD→TZS rate in force
+        if ($rate->from_currency === 'USD' && $rate->to_currency === 'TZS' && ExchangeRateService::inForce('USD')?->id === $rate->id) {
+            SystemConfig::setValue('usd_to_tzs_exchange_rate', (string) (float) $rate->rate);
+        }
     }
 }

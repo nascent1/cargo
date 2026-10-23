@@ -51,6 +51,7 @@ class CargoPortalBookingTest extends TestCase
         $this->fare($this->parcel, ['price_tzs' => 7000]);
 
         SystemConfig::setValue('sms_enabled', '0'); // no customer SMS from tests
+        SystemConfig::setValue('exchange_rate_last_updated', today()->toDateString()); // admins are asked for the rate when it's due
     }
 
     private function user(string $domain, string $roleSlug): User

@@ -65,9 +65,12 @@ class CargoFareCalculator
             }
 
             [$base, $method, $rate] = $this->baseFare($type, $fare, $capacity, $currency);
-            $warning = $rate <= 0 && in_array($method, ['per_kg', 'per_cbm'], true)
-                ? "The {$type->name} fare on this route has no " . ($method === 'per_kg' ? 'per-kg' : 'per-cbm') . ' rate, so this line is free. Set the rate under Cargo Fares.'
-                : null;
+            // A fare without a rate for the type's pricing basis would book the line for free (same rule as pricedTypeIds)
+            if ($fare->basisRate($type->measurement_unit) <= 0) {
+                $errors["items.{$i}.cargo_type_id"] = "No price is set for {$type->name} on this route: its fare has no "
+                    . ['per_kg' => 'per-kg rate', 'per_cbm' => 'per-cbm rate', 'flat' => 'price'][$method] . '. Set it under Cargo Fares.';
+                continue;
+            }
 
             $minCharge = (float) ($currency === 'USD' ? $fare->min_charge_usd : $fare->min_charge_tzs);
             if ($minCharge > 0 && $base < $minCharge) {
@@ -118,7 +121,6 @@ class CargoFareCalculator
                 'gross_fare'       => $base + $surcharge + $valueCharge,
                 'discount_amount'  => 0,
                 'final_fare'       => $base + $surcharge + $valueCharge,
-                'warning'          => $warning,
             ]);
         }
 
@@ -147,7 +149,6 @@ class CargoFareCalculator
                 'lane_meters' => round(array_sum(array_column($lines, 'lane_meters_consumed')), 2),
                 'value_charge' => array_sum(array_column($lines, 'value_charge')),
             ],
-            'warnings'       => array_values(array_unique(array_filter(array_column($lines, 'warning')))),
             'has_hazmat'     => collect($lines)->contains('is_hazmat', true),
             'has_fragile'    => collect($lines)->contains('is_fragile', true),
             'has_livestock'  => collect($lines)->contains('category', 'livestock'),
@@ -177,18 +178,24 @@ class CargoFareCalculator
     }
 
     /**
-     * Cargo types that can be booked on a route (and vessel) at a moment: those with a fare in force.
+     * Cargo types that can be booked on a route (and vessel) at a moment: those whose fare in force
+     * has a rate for the type's pricing basis (per kg, per cbm or flat).
      *
      * @return int[]
      */
     public function pricedTypeIds(int $routeId, ?int $transportUnitId, ?CarbonInterface $at = null): array
     {
-        return CargoFare::effectiveAt($at ?? now())
+        return CargoFare::with('cargoType:id,measurement_unit')
+            ->effectiveAt($at ?? now())
             ->where('route_id', $routeId)
             ->where(fn ($q) => $q->whereNull('transport_unit_id')->when($transportUnitId, fn ($q) => $q->orWhere('transport_unit_id', $transportUnitId)))
-            ->distinct()
-            ->pluck('cargo_type_id')
-            ->map(fn ($id) => (int) $id)
+            ->orderByRaw('transport_unit_id IS NULL')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('cargo_type_id') // the fare resolveFare() picks: this vessel's first, then the route-wide one
+            ->filter(fn (CargoFare $f) => $f->basisRate() > 0)
+            ->map(fn (CargoFare $f) => (int) $f->cargo_type_id)
+            ->values()
             ->all();
     }
 

@@ -261,7 +261,6 @@
                                 <span x-show="lineQuote(line).discount_amount > 0" class="text-emerald-700" x-text="`Discount −${CargoUI.num(lineQuote(line).discount_amount)}`"></span>
                             </div>
                         </template>
-                        <p x-show="lineQuote(line)?.warning" class="text-xs font-semibold text-red-700"><i class="fas fa-circle-exclamation mr-1"></i><span x-text="lineQuote(line)?.warning"></span></p>
                     </div>
                 </template>
 

@@ -276,7 +276,7 @@ class CargoDashboardService
                 ->orWhere(fn ($q) => $q->where('t.measurement_unit', 'cbm')->whereRaw('COALESCE(f.price_per_cbm_tzs, 0) = 0')))
             ->count();
         $items[] = ['key' => 'free_fares', 'severity' => 'danger', 'count' => $freeFares,
-            'label' => 'Fares in force with no per-kg / per-cbm rate (book for free)', 'url' => route('admin.cargo.fares', ['missing_rate' => 1])];
+            'label' => 'Fares in force with no per-kg / per-cbm rate (not bookable)', 'url' => route('admin.cargo.fares', ['missing_rate' => 1])];
 
         $unpricedRoutes = Route::where('status', 'active')
             ->whereDoesntHave('cargoFares', fn ($q) => $q->effectiveAt(now()))
