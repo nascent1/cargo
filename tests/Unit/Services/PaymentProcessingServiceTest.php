@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\TransactionCategory;
 use App\Services\PaymentProcessingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class PaymentProcessingServiceTest extends TestCase
@@ -22,7 +23,7 @@ class PaymentProcessingServiceTest extends TestCase
         $this->service = app(PaymentProcessingService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_records_cash_payment_with_transaction_ledger(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -47,7 +48,7 @@ class PaymentProcessingServiceTest extends TestCase
         $this->assertEquals('TZS', $transaction->currency_code);
     }
 
-    /** @test */
+    #[Test]
     public function it_records_usd_payment_with_exchange_rate(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -100,7 +101,7 @@ class PaymentProcessingServiceTest extends TestCase
         $this->assertEquals(30.00, (float) $transaction->amount);
     }
 
-    /** @test */
+    #[Test]
     public function it_deducts_agent_wallet_with_commission(): void
     {
         $agentData = $this->createAgentWithAccount(500000, [
@@ -130,7 +131,7 @@ class PaymentProcessingServiceTest extends TestCase
         $this->assertNotNull($deductionTx, 'Deduction transaction should exist for agent wallet payment');
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_payment_with_insufficient_balance(): void
     {
         $agentData = $this->createAgentWithAccount(10000); // Only 10k balance
@@ -147,7 +148,7 @@ class PaymentProcessingServiceTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function commission_is_credited_for_pre_deposit_method(): void
     {
         $agentData = $this->createAgentWithAccount(500000, [
@@ -174,7 +175,7 @@ class PaymentProcessingServiceTest extends TestCase
         $this->assertEquals($expectedComm, (float) $commTx->amount);
     }
 
-    /** @test */
+    #[Test]
     public function no_commission_for_post_sale_method(): void
     {
         $agentData = $this->createAgentWithAccount(500000, [

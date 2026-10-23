@@ -77,7 +77,6 @@ class MenuSeeder extends Seeder
             ['title' => 'Dual Control Rules', 'route' => 'admin.settings.dual-control-configs.index', 'icon' => 'fa-shield-alt', 'permission_name' => 'setting:read'],
             ['title' => 'Menus', 'route' => 'admin.settings.menus.index', 'icon' => 'fa-list', 'permission_name' => 'setting:read'],
             ['title' => 'Notifications', 'route' => 'admin.notifications.templates', 'icon' => 'fa-bell', 'permission_name' => 'notification:read'],
-            ['title' => 'Announcements', 'route' => 'admin.notifications.announcements', 'icon' => 'fa-bullhorn', 'permission_name' => 'notification:read'],
         ];
 
         foreach ($adminItems as $index => $item) {

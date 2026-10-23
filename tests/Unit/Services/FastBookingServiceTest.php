@@ -7,6 +7,7 @@ use App\Models\SystemTransaction;
 use App\Models\Ticket;
 use App\Services\FastBookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class FastBookingServiceTest extends TestCase
@@ -21,7 +22,7 @@ class FastBookingServiceTest extends TestCase
         $this->service = app(FastBookingService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_creates_a_standard_booking_from_locks(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -70,7 +71,7 @@ class FastBookingServiceTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_complimentary_tickets_with_no_transaction(): void
     {
         // This test simulates the bug scenario (BUG-001/BUG-002) and verifies
@@ -126,7 +127,7 @@ class FastBookingServiceTest extends TestCase
         $this->assertEquals(0.00, (float) $tx->amount);
     }
 
-    /** @test */
+    #[Test]
     public function it_deducts_agent_float_during_fast_booking(): void
     {
         $agentData = $this->createAgentWithAccount(100000);

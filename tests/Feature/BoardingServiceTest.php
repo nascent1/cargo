@@ -7,6 +7,7 @@ use App\Models\Ticket;
 use App\Services\BoardingService;
 use App\Services\ScannerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BoardingServiceTest extends TestCase
@@ -23,7 +24,7 @@ class BoardingServiceTest extends TestCase
         $this->scannerService = app(ScannerService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_successfully_boards_a_valid_ticket(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -48,7 +49,7 @@ class BoardingServiceTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_boarding_an_already_boarded_ticket(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -64,7 +65,7 @@ class BoardingServiceTest extends TestCase
         $this->assertEquals('duplicate', $event->result);
     }
 
-    /** @test */
+    #[Test]
     public function it_fails_boarding_if_wrong_voyage(): void
     {
         $scenario1 = $this->createCompleteBookingScenario();

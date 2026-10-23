@@ -14,6 +14,7 @@ use App\Models\Voyage;
 use App\Services\CancellationPenaltyCalculator;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\CreatesTestData;
 use Tests\TestCase;
 
@@ -29,7 +30,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
 
     // ── Flat Mode Tests ──────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function flat_mode_returns_configured_percentage(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -43,7 +44,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(90000.00, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function flat_mode_uses_custom_percentage(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -57,7 +58,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(150000.00, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function flat_mode_ignores_voyage_timing(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -78,7 +79,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
 
     // ── Disabled Mode Tests ──────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function disabled_penalty_returns_zero(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '0');
@@ -92,7 +93,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(100000.00, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function disabled_penalty_returns_zero_even_for_tiered(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '0');
@@ -108,7 +109,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
 
     // ── Tiered Mode Tests ────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function tiered_mode_free_cancellation_beyond_partial_hours(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -130,7 +131,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals((float) $data['ticket']->final_fare, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function tiered_mode_partial_penalty_within_partial_window(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -149,7 +150,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(75000.00, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function tiered_mode_full_penalty_within_full_window(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -168,7 +169,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(0.0, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function tiered_mode_full_penalty_after_departure(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -184,7 +185,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(0.0, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function tiered_mode_at_exact_boundary_of_partial_window(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -202,7 +203,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(25.0, $result['percent']);
     }
 
-    /** @test */
+    #[Test]
     public function tiered_mode_at_exact_boundary_of_full_window(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -222,7 +223,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
 
     // ── Fallback Tests ───────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function tiered_mode_falls_back_to_flat_when_no_voyage(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -236,7 +237,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(10000.00, $result['amount']);
     }
 
-    /** @test */
+    #[Test]
     public function get_penalty_percent_returns_correct_value(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -250,7 +251,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
 
     // ── Rounding Tests ───────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function penalty_amount_is_rounded_to_two_decimals(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -264,7 +265,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
         $this->assertEquals(31000.00, $result['refund']);
     }
 
-    /** @test */
+    #[Test]
     public function refund_is_never_negative(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');
@@ -279,7 +280,7 @@ class CancellationPenaltyCalculatorTest extends TestCase
 
     // ── Tiered Mode with Custom Config ───────────────────────
 
-    /** @test */
+    #[Test]
     public function tiered_mode_respects_custom_thresholds(): void
     {
         SystemConfig::setValue('cancellation_penalty_enabled', '1');

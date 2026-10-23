@@ -4,13 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class CancellationFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function customer_can_cancel_held_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();

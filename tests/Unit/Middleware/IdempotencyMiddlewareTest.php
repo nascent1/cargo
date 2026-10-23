@@ -5,6 +5,7 @@ namespace Tests\Unit\Middleware;
 use App\Http\Middleware\IdempotencyMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class IdempotencyMiddlewareTest extends TestCase
@@ -17,7 +18,7 @@ class IdempotencyMiddlewareTest extends TestCase
         $this->middleware = new IdempotencyMiddleware();
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_post_requests_without_idempotency_key(): void
     {
         $request = Request::create('/api/v1/bookings', 'POST', ['voyage_id' => 1]);
@@ -32,7 +33,7 @@ class IdempotencyMiddlewareTest extends TestCase
         $this->assertStringContainsString('Idempotency-Key', $data['message']);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_get_requests_without_idempotency_key(): void
     {
         $request = Request::create('/api/v1/bookings', 'GET');
@@ -44,7 +45,7 @@ class IdempotencyMiddlewareTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_post_requests_with_idempotency_key(): void
     {
         $request = Request::create('/api/v1/bookings', 'POST', ['voyage_id' => 1]);
@@ -57,7 +58,7 @@ class IdempotencyMiddlewareTest extends TestCase
         $this->assertContains($response->getStatusCode(), [200, 201]);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_cached_response_for_duplicate_key(): void
     {
         $idempotencyKey = 'test-key-' . uniqid();
@@ -79,7 +80,7 @@ class IdempotencyMiddlewareTest extends TestCase
         $this->assertTrue($data['_idempotent'] ?? false);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_put_requests_without_idempotency_key(): void
     {
         $request = Request::create('/api/v1/bookings/1', 'PUT', ['status' => 'cancelled']);
@@ -91,7 +92,7 @@ class IdempotencyMiddlewareTest extends TestCase
         $this->assertEquals(422, $response->getStatusCode());
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_patch_requests_without_idempotency_key(): void
     {
         $request = Request::create('/api/v1/bookings/1', 'PATCH', ['seat_number' => 'A1']);

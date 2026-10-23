@@ -46,7 +46,7 @@
                                             $isActive = $menuIsActive($child->route);
                                         @endphp
                                         <li>
-                                            <a href="{{ $child->route ? route($child->route) : '#' }}"
+                                            <a href="{{ $child->route && Route::has($child->route) ? route($child->route) : '#' }}"
                                                class="group flex gap-x-3 rounded-r-lg px-3 py-2 text-sm font-medium transition-all duration-150
                                                    {{ $isActive ? 'bg-brand-50 text-brand-700 border-l-4 border-brand-600 shadow-sm' : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100/50 border-l-4 border-transparent' }}">
                                                 <i class="fas {{ $child->icon }} w-5 text-center {{ $isActive ? 'text-brand-600' : 'text-surface-500 group-hover:text-surface-700' }}"></i>
@@ -61,7 +61,7 @@
                                     $isActive = $menuIsActive($menu->route);
                                 @endphp
                                 <li>
-                                    <a href="{{ $menu->route ? route($menu->route) : '#' }}"
+                                    <a href="{{ $menu->route && Route::has($menu->route) ? route($menu->route) : '#' }}"
                                        class="group flex gap-x-3 rounded-r-lg px-3 py-2 text-sm font-medium transition-all duration-150
                                            {{ $isActive ? 'bg-brand-50 text-brand-700 border-l-4 border-brand-600 shadow-sm' : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100/50 border-l-4 border-transparent' }}">
                                         <i class="fas {{ $menu->icon }} w-5 text-center
@@ -100,7 +100,7 @@
                                         $isActive = $menuIsActive($child->route);
                                     @endphp
                                     <li>
-                                            <a href="{{ $child->route ? route($child->route) : '#' }}"
+                                            <a href="{{ $child->route && Route::has($child->route) ? route($child->route) : '#' }}"
                                                class="group flex gap-x-3 rounded-r-lg px-3 py-2 text-sm font-medium transition-all duration-150
                                                    {{ $isActive ? 'bg-brand-50 text-brand-700 border-l-4 border-brand-600 shadow-sm' : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100/50 border-l-4 border-transparent' }}">
                                                 <i class="fas {{ $child->icon }} w-5 text-center {{ $isActive ? 'text-brand-600' : 'text-surface-500 group-hover:text-surface-700' }}"></i>
@@ -116,7 +116,7 @@
                                     $isActive = $menuIsActive($menu->route);
                                 @endphp
                                 <li>
-                                    <a href="{{ $menu->route ? route($menu->route) : '#' }}"
+                                    <a href="{{ $menu->route && Route::has($menu->route) ? route($menu->route) : '#' }}"
                                        class="group flex gap-x-3 rounded-r-lg px-3 py-2 text-sm font-medium transition-all duration-150
                                            {{ $isActive ? 'bg-brand-50 text-brand-700 border-l-4 border-brand-600 shadow-sm' : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100/50 border-l-4 border-transparent' }}">
                                         <i class="fas {{ $menu->icon }} w-5 text-center {{ $isActive ? 'text-brand-600' : 'text-surface-500 group-hover:text-surface-700' }}"></i>

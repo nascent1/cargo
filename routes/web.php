@@ -277,13 +277,9 @@ Route::middleware('auth')->group(function () {
             Route::delete('/roles/{role}', [SystemConfigController::class, 'deleteRole'])->name('roles.delete')->middleware('permission:role:manage');
         });
 
-        // Transport Services (formerly Voyages)
-        Route::get('/voyages', [\App\Http\Controllers\Admin\VoyageController::class, 'index'])->name('voyages.index')->middleware('permission:voyage:read');
-        Route::get('/availability', [\App\Http\Controllers\Admin\VoyageController::class, 'availabilityIndex'])->name('availability.index')->middleware('permission:availability:read');
-        Route::get('/voyages/{voyage}/availability', [\App\Http\Controllers\Admin\VoyageController::class, 'manageAvailability'])->name('voyages.availability')->middleware('permission:availability:manage');
-        Route::post('/voyages/{voyage}/availability', [\App\Http\Controllers\Admin\VoyageController::class, 'updateAvailability'])->name('voyages.availability.update')->middleware('permission:availability:manage');
-        Route::patch('/voyages/{voyage}/status', [\App\Http\Controllers\Admin\VoyageController::class, 'updateStatus'])->name('voyages.update-status')->middleware('permission:voyage:update');
-        Route::patch('/voyages/{voyage}/weather', [\App\Http\Controllers\Admin\VoyageController::class, 'updateWeather'])->name('voyages.update-weather')->middleware('permission:voyage:update');
+        // The ferry screens these addresses had (voyages, availability) don't exist here: cargo's are Journeys
+        Route::redirect('/voyages', '/admin/cargo/journeys');
+        Route::redirect('/availability', '/admin/cargo/journeys-availability');
 
         // Cargo reports (exports additionally need cargo-export-report, checked in the controller)
         Route::prefix('reports')->name('reports.')->middleware('permission:cargo-report')->group(function () {
@@ -291,16 +287,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/{report}', [ReportController::class, 'show'])->name('show')->where('report', '[a-z_]+');
         });
 
-        // Notifications & Announcements
+        // Notifications (announcements are a ferry screen with no model or table here)
         Route::prefix('notifications')->name('notifications.')->group(function () {
             Route::get('/templates', [\App\Http\Controllers\Admin\NotificationController::class, 'templates'])->name('templates')->middleware('permission:notification:read');
             Route::post('/templates', [\App\Http\Controllers\Admin\NotificationController::class, 'storeTemplate'])->name('store-template')->middleware('permission:notification:create');
             Route::post('/templates/{template}/toggle', [\App\Http\Controllers\Admin\NotificationController::class, 'toggleTemplate'])->name('toggle-template')->middleware('permission:notification:update');
             Route::get('/logs', [\App\Http\Controllers\Admin\NotificationController::class, 'logs'])->name('logs')->middleware('permission:notification:read');
-            Route::get('/announcements', [\App\Http\Controllers\Admin\NotificationController::class, 'announcements'])->name('announcements')->middleware('permission:notification:read');
-            Route::post('/announcements', [\App\Http\Controllers\Admin\NotificationController::class, 'storeAnnouncement'])->name('store-announcement')->middleware('permission:notification:create');
-            Route::post('/announcements/{announcement}/toggle', [\App\Http\Controllers\Admin\NotificationController::class, 'toggleAnnouncement'])->name('toggle-announcement')->middleware('permission:notification:update');
-            Route::delete('/announcements/{announcement}', [\App\Http\Controllers\Admin\NotificationController::class, 'destroyAnnouncement'])->name('destroy-announcement')->middleware('permission:notification:delete');
         });
 
         // Dual Control

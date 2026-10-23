@@ -8,6 +8,7 @@ use App\Models\CargoLock;
 use App\Models\CargoType;
 use App\Models\Consignment;
 use App\Models\Role;
+use App\Models\Shift;
 use App\Models\SystemConfig;
 use App\Models\TransportService;
 use App\Models\User;
@@ -188,6 +189,9 @@ class CargoAdminScreensTest extends TestCase
         $service = TransportService::availableForBooking()->whereHas('cargoInventory')->first()
             ?? $this->markTestSkipped('Needs a bookable departure.');
         CargoInventory::where('transport_service_id', $service->id)->update(['total_weight_capacity_kg' => 10000, 'used_weight_kg' => 0, 'held_weight_kg' => 0]);
+        // The officer's real shift on this database may be overdue or resting (403 "shift has ended"): end it long
+        // ago so the first booking starts a fresh one, as at sign-in (rolled back)
+        Shift::where('user_id', $officer->id)->update(['status' => 'ended', 'end_time' => now()->subDays(2), 'actual_end_time' => now()->subDays(2)]);
         $type = CargoType::create(['name' => 'Portal test', 'code' => 'PO' . strtoupper(Str::random(6)), 'category' => 'general', 'measurement_unit' => 'unit', 'status' => 'active']);
         CargoFare::create(['cargo_type_id' => $type->id, 'route_id' => $service->route_id, 'price_tzs' => 7000, 'price_usd' => 0, 'status' => 'active']);
         // A client-sent discount is ignored

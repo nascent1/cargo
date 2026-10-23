@@ -12,6 +12,7 @@ use App\Services\DiscountService;
 use App\Services\CouponService;
 use App\Services\PaymentProcessingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingCreationServiceTest extends TestCase
@@ -27,7 +28,7 @@ class BookingCreationServiceTest extends TestCase
         $this->service = app(BookingCreationService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_creates_a_hold_successfully_with_multiple_passengers(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -63,7 +64,7 @@ class BookingCreationServiceTest extends TestCase
         $this->assertTrue(str_starts_with($booking->booking_reference, 'VFF-'));
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_creation_if_voyage_is_not_accepting_reservations(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -82,7 +83,7 @@ class BookingCreationServiceTest extends TestCase
         $this->service->createHold($payload, $scenario['user']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_creation_if_agent_is_not_authorized_for_vessel(): void
     {
         $agentData = $this->createAgentWithAccount();
@@ -104,7 +105,7 @@ class BookingCreationServiceTest extends TestCase
         $this->service->createHold($payload, $agentData['user']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_at_least_one_passenger(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -120,7 +121,7 @@ class BookingCreationServiceTest extends TestCase
         $this->service->createHold($payload, $scenario['user']);
     }
 
-    /** @test */
+    #[Test]
     public function it_correctly_uses_agent_ticket_prefix(): void
     {
         SystemConfig::setValue('ticket_prefix_agent', 'VAF');
@@ -143,7 +144,7 @@ class BookingCreationServiceTest extends TestCase
         $this->assertTrue(str_starts_with($booking->booking_reference, 'VAF-'));
     }
 
-    /** @test */
+    #[Test]
     public function it_validates_seat_availability_and_rejects_double_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -169,7 +170,7 @@ class BookingCreationServiceTest extends TestCase
         $this->service->createHold($payload, $scenario['user']);
     }
 
-    /** @test */
+    #[Test]
     public function it_applies_automatic_discounts(): void
     {
         // Mock DiscountService
@@ -197,7 +198,7 @@ class BookingCreationServiceTest extends TestCase
         $this->assertEquals(30000, $booking->net_amount);
     }
 
-    /** @test */
+    #[Test]
     public function it_successfully_completes_a_pending_booking(): void
     {
         $paymentMock = \Mockery::mock(PaymentProcessingService::class);

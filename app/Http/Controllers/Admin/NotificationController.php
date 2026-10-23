@@ -6,7 +6,6 @@ use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\NotificationTemplate;
 use App\Models\NotificationLog;
-use App\Models\Announcement;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
@@ -73,49 +72,5 @@ class NotificationController extends Controller
             ->withQueryString();
 
         return view('admin.notifications.logs', compact('logs'));
-    }
-
-    // ── Announcements ───────────────────────────────────────
-
-    public function announcements(Request $request)
-    {
-        $announcements = Announcement::when($request->type, fn($q, $t) => $q->where('type', $t))
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
-
-        return view('admin.notifications.announcements', compact('announcements'));
-    }
-
-    public function storeAnnouncement(Request $request)
-    {
-        $validated = $request->validate([
-            'title'           => 'required|string|max:255',
-            'message'         => 'required|string',
-            'type'            => 'required|in:info,warning,emergency,maintenance',
-            'target_audience' => 'required|in:all,agents,passengers,operators',
-            'route_id'        => 'nullable|exists:routes,id',
-            'start_date'      => 'required|date',
-            'end_date'        => 'nullable|date|after_or_equal:start_date',
-        ]);
-
-        Announcement::create(array_merge($validated, [
-            'is_active'  => true,
-            'created_by' => auth()->id(),
-        ]));
-
-        return redirect()->route('admin.notifications.announcements')->with('success', 'Announcement created.');
-    }
-
-    public function toggleAnnouncement(Announcement $announcement)
-    {
-        $announcement->update(['is_active' => !$announcement->is_active]);
-        return redirect()->back()->with('success', 'Announcement toggled.');
-    }
-
-    public function destroyAnnouncement(Announcement $announcement)
-    {
-        $announcement->delete();
-        return redirect()->route('admin.notifications.announcements')->with('success', 'Announcement deleted.');
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use App\Models\SystemConfig;
 
@@ -10,7 +11,7 @@ class TicketingFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function customer_can_fetch_booking_tickets(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -31,7 +32,7 @@ class TicketingFlowTest extends TestCase
         $this->assertArrayHasKey('ticket_number', $tickets[0]);
     }
 
-    /** @test */
+    #[Test]
     public function agent_can_print_booking_tickets(): void
     {
         $agentData = $this->createAgentWithAccount();

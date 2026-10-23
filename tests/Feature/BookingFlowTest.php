@@ -5,13 +5,14 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\Ticket;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function customer_can_hold_and_pay_for_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();

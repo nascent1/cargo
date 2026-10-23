@@ -3,13 +3,14 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AuthPermissionTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function passenger_cannot_access_agent_endpoints(): void
     {
         $passenger = $this->createPassengerUser();
@@ -21,7 +22,7 @@ class AuthPermissionTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function agent_cannot_access_admin_endpoints(): void
     {
         $agentData = $this->createAgentWithAccount();

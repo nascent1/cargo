@@ -7,13 +7,14 @@ use App\Models\AgentAccount;
 use App\Gateways\Payment\SelcomGateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SystemTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function end_to_end_agent_booking_and_boarding_journey(): void
     {
         // 1. Setup Data

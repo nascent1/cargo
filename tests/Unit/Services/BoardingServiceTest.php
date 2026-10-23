@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\Voyage;
 use App\Services\BoardingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BoardingServiceTest extends TestCase
@@ -22,7 +23,7 @@ class BoardingServiceTest extends TestCase
         $this->service = new BoardingService();
     }
 
-    /** @test */
+    #[Test]
     public function it_processes_successful_scan_and_updates_ticket_and_booking_status(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -45,7 +46,7 @@ class BoardingServiceTest extends TestCase
         $this->assertEquals('boarded', $booking->status);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_invalid_qr_data(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -60,7 +61,7 @@ class BoardingServiceTest extends TestCase
         $this->assertStringContainsString('Could not parse QR data', $event->notes);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_unconfirmed_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -82,7 +83,7 @@ class BoardingServiceTest extends TestCase
         $this->assertNotEquals('boarded', $ticket->status);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_ticket_for_wrong_voyage(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -103,7 +104,7 @@ class BoardingServiceTest extends TestCase
         $this->assertEquals('wrong_voyage', $event->result);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_duplicate_scan(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -124,7 +125,7 @@ class BoardingServiceTest extends TestCase
         $this->assertEquals('duplicate', $event2->result);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_scan_after_voyage_departure(): void
     {
         $scenario = $this->createCompleteBookingScenario();

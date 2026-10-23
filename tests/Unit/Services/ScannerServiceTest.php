@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ScannerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ScannerServiceTest extends TestCase
@@ -21,7 +22,7 @@ class ScannerServiceTest extends TestCase
         $this->service = new ScannerService();
     }
 
-    /** @test */
+    #[Test]
     public function it_authenticates_operator_with_valid_credentials(): void
     {
         $user = $this->createSystemUser(['domain' => 'system_user']);
@@ -43,7 +44,7 @@ class ScannerServiceTest extends TestCase
         $this->assertEquals('OP123', $result['operator']['operator_number']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_operator_with_invalid_credentials(): void
     {
         $user = $this->createSystemUser(['domain' => 'system_user']);
@@ -64,7 +65,7 @@ class ScannerServiceTest extends TestCase
         $this->service->authenticateOperator('OP123', '9999');
     }
 
-    /** @test */
+    #[Test]
     public function it_gets_voyage_tickets_for_manifest(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -82,7 +83,7 @@ class ScannerServiceTest extends TestCase
         $this->assertEquals(1, $result['summary']['remaining']);
     }
 
-    /** @test */
+    #[Test]
     public function it_verifies_valid_ticket(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -99,7 +100,7 @@ class ScannerServiceTest extends TestCase
         $this->assertEquals($ticket->ticket_number, $result['ticket']['ticket_number']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_verification_for_wrong_voyage_or_invalid_status(): void
     {
         $scenario = $this->createCompleteBookingScenario();

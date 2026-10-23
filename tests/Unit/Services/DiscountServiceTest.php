@@ -7,6 +7,7 @@ use App\Models\Promotion;
 use App\Models\SystemConfig;
 use App\Services\DiscountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class DiscountServiceTest extends TestCase
@@ -25,7 +26,7 @@ class DiscountServiceTest extends TestCase
         $this->service = app(DiscountService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_applies_percentage_price_discount(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -55,7 +56,7 @@ class DiscountServiceTest extends TestCase
         $this->assertEquals(3500.0, $result['amount']); // 10% of 35,000
     }
 
-    /** @test */
+    #[Test]
     public function it_applies_fixed_price_discount_and_converts_usd(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -83,7 +84,7 @@ class DiscountServiceTest extends TestCase
         $this->assertEquals(2.0, $result['amount']); // 5000 / 2500 = $2
     }
 
-    /** @test */
+    #[Test]
     public function it_respects_target_audience_restrictions(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -111,7 +112,7 @@ class DiscountServiceTest extends TestCase
         $this->assertNotNull($tzsResult);
     }
 
-    /** @test */
+    #[Test]
     public function it_respects_group_size_minimums(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -137,7 +138,7 @@ class DiscountServiceTest extends TestCase
         $this->assertNotNull($passResult);
     }
 
-    /** @test */
+    #[Test]
     public function it_picks_the_highest_value_discount_when_multiple_match(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -167,7 +168,7 @@ class DiscountServiceTest extends TestCase
         $this->assertEquals('50% Off', $result['name']);
     }
 
-    /** @test */
+    #[Test]
     public function it_applies_no_code_promotions_if_better_than_price_discount(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -200,7 +201,7 @@ class DiscountServiceTest extends TestCase
         $this->assertEquals('Big Auto Promo', $result['name']);
     }
 
-    /** @test */
+    #[Test]
     public function it_respects_promotion_budgets_and_deducts_used_budget(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -238,7 +239,7 @@ class DiscountServiceTest extends TestCase
         $this->assertEquals(15000, $promo->budget_used);
     }
 
-    /** @test */
+    #[Test]
     public function it_can_preview_cart_with_discounts_without_saving(): void
     {
         $scenario = $this->createCompleteBookingScenario();

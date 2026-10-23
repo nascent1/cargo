@@ -14,6 +14,7 @@ use App\Services\DualControlService;
 use App\Services\TicketManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Models\Permission;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class TicketManagementServiceTest extends TestCase
@@ -32,7 +33,7 @@ class TicketManagementServiceTest extends TestCase
         SystemConfig::setValue('cancellation_penalty_percentage', '10');
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_editing_booking_notes_without_penalty(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -46,7 +47,7 @@ class TicketManagementServiceTest extends TestCase
         $this->assertEquals(0, $updatedBooking->edit_count ?? 0); // No items changed, edit_count remains unchanged
     }
 
-    /** @test */
+    #[Test]
     public function it_blocks_editing_more_than_once_without_permission(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -61,7 +62,7 @@ class TicketManagementServiceTest extends TestCase
         $this->service->editBooking($booking, ['notes' => 'Second Edit'], $actor);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_dual_control_for_class_downgrade(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -100,7 +101,7 @@ class TicketManagementServiceTest extends TestCase
         // Therefore, we only assert the exception was thrown.
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_class_upgrade_and_updates_fares(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -150,7 +151,7 @@ class TicketManagementServiceTest extends TestCase
         $this->assertEquals(1, $updatedBooking->edit_count);
     }
 
-    /** @test */
+    #[Test]
     public function it_reschedules_ticket_for_free_on_first_edit(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -180,7 +181,7 @@ class TicketManagementServiceTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_charges_reschedule_penalty_on_subsequent_edits(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -215,7 +216,7 @@ class TicketManagementServiceTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_splits_booking_when_rescheduling_to_different_vessel_or_date(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -263,7 +264,7 @@ class TicketManagementServiceTest extends TestCase
         $this->assertEquals('confirmed', $ticket2->status);
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_rescheduling_cancelled_or_boarded_tickets(): void
     {
         $scenario = $this->createCompleteBookingScenario();

@@ -8,6 +8,7 @@ use App\Models\CorporateInvoice;
 use App\Services\CorporateService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class CorporateServiceTest extends TestCase
@@ -35,7 +36,7 @@ class CorporateServiceTest extends TestCase
         ], $overrides));
     }
 
-    /** @test */
+    #[Test]
     public function it_charges_booking_to_corporate_account(): void
     {
         $corporate = $this->createCorporate(['credit_limit' => 1000.00]);
@@ -63,7 +64,7 @@ class CorporateServiceTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_charging_to_inactive_corporate_account(): void
     {
         $corporate = $this->createCorporate(['status' => 'inactive']);
@@ -80,7 +81,7 @@ class CorporateServiceTest extends TestCase
         $this->service->chargeToAccount($booking);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_monthly_invoice(): void
     {
         $corporate = $this->createCorporate();
@@ -102,7 +103,7 @@ class CorporateServiceTest extends TestCase
         $this->assertEquals('draft', $invoice->status);
     }
 
-    /** @test */
+    #[Test]
     public function it_records_payment_against_invoice(): void
     {
         $corporate = $this->createCorporate(['current_balance' => 500.00]);
@@ -129,7 +130,7 @@ class CorporateServiceTest extends TestCase
         $this->assertStringContainsString('REF123', $invoice->notes);
     }
 
-    /** @test */
+    #[Test]
     public function it_marks_invoice_as_sent(): void
     {
         $corporate = $this->createCorporate();

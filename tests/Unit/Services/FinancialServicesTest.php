@@ -6,6 +6,7 @@ use App\Models\SystemConfig;
 use App\Models\SystemTransaction;
 use App\Services\ExchangeRateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -24,7 +25,7 @@ class FinancialServicesTest extends TestCase
 
     // ── Exchange Rate Service ─────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function exchange_rate_service_returns_default_when_no_config(): void
     {
         SystemConfig::where('key_name', 'usd_to_tzs_exchange_rate')->delete();
@@ -32,7 +33,7 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals(2600.0, $rate);
     }
 
-    /** @test */
+    #[Test]
     public function exchange_rate_service_returns_config_value(): void
     {
         SystemConfig::updateOrCreate(
@@ -43,14 +44,14 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals(2750.0, $rate);
     }
 
-    /** @test */
+    #[Test]
     public function exchange_rate_same_currency_returns_one(): void
     {
         $this->assertEquals(1.0, ExchangeRateService::getCurrentRate('TZS', 'TZS'));
         $this->assertEquals(1.0, ExchangeRateService::getCurrentRate('USD', 'USD'));
     }
 
-    /** @test */
+    #[Test]
     public function exchange_rate_convert_usd_to_tzs(): void
     {
         SystemConfig::updateOrCreate(
@@ -61,7 +62,7 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals(260000.0, $result);
     }
 
-    /** @test */
+    #[Test]
     public function exchange_rate_to_tzs_helper(): void
     {
         SystemConfig::updateOrCreate(
@@ -72,7 +73,7 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals(1.0, ExchangeRateService::rateToTzs('TZS'));
     }
 
-    /** @test */
+    #[Test]
     public function to_tzs_converts_amount(): void
     {
         SystemConfig::updateOrCreate(
@@ -85,7 +86,7 @@ class FinancialServicesTest extends TestCase
 
     // ── Pending Refund Service ────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function pending_refund_service_can_list_by_status(): void
     {
         $agent = $this->createAgentWithAccount(500000);
@@ -112,7 +113,7 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals(5000.0, $service->pendingTotal());
     }
 
-    /** @test */
+    #[Test]
     public function pending_refund_release_credits_agent_wallet(): void
     {
         $agent = $this->createAgentWithAccount(500000);
@@ -137,7 +138,7 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals($admin->id, $pr->released_by);
     }
 
-    /** @test */
+    #[Test]
     public function pending_refund_reject_stores_reason(): void
     {
         $agent = $this->createAgentWithAccount(500000);
@@ -160,7 +161,7 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals('rejected', $pr->status);
     }
 
-    /** @test */
+    #[Test]
     public function pending_refund_bulk_release_returns_counts(): void
     {
         $agent = $this->createAgentWithAccount(500000);
@@ -186,7 +187,7 @@ class FinancialServicesTest extends TestCase
         $this->assertEquals(0, $result['failed']);
     }
 
-    /** @test */
+    #[Test]
     public function cannot_release_already_released_refund(): void
     {
         $agent = $this->createAgentWithAccount(500000);
@@ -209,7 +210,7 @@ class FinancialServicesTest extends TestCase
 
     // ── SystemTransaction Soft Deletes ───────────────────────
 
-    /** @test */
+    #[Test]
     public function system_transaction_uses_soft_deletes(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -237,7 +238,7 @@ class FinancialServicesTest extends TestCase
 
     // ── Transaction Linkage ─────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function system_transaction_has_related_transaction_relationship(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -278,7 +279,7 @@ class FinancialServicesTest extends TestCase
 
     // ── Refund Gateway ──────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function manual_refund_gateway_returns_success(): void
     {
         $gateway = new \App\Services\Refunds\ManualRefundGateway();
@@ -289,21 +290,21 @@ class FinancialServicesTest extends TestCase
         $this->assertFalse($gateway->supportsAutomaticRefund());
     }
 
-    /** @test */
+    #[Test]
     public function refund_gateway_factory_returns_manual_for_cash(): void
     {
         $gateway = \App\Services\Refunds\RefundGatewayFactory::make('cash');
         $this->assertInstanceOf(\App\Services\Refunds\ManualRefundGateway::class, $gateway);
     }
 
-    /** @test */
+    #[Test]
     public function refund_gateway_factory_returns_selcom_for_mobile_money(): void
     {
         $gateway = \App\Services\Refunds\RefundGatewayFactory::make('selcom');
         $this->assertInstanceOf(\App\Services\Refunds\SelcomRefundGateway::class, $gateway);
     }
 
-    /** @test */
+    #[Test]
     public function selcom_refund_gateway_gracefully_fails_without_config(): void
     {
         $gateway = new \App\Services\Refunds\SelcomRefundGateway();

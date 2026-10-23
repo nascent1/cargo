@@ -10,6 +10,7 @@ use App\Services\DualControlService;
 use App\Services\FloatManagementService;
 use App\Services\SystemTransactionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class FloatManagementServiceTest extends TestCase
@@ -25,7 +26,7 @@ class FloatManagementServiceTest extends TestCase
         $this->service = app(FloatManagementService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_submits_for_dual_control_if_topup_exceeds_threshold(): void
     {
         $agentData = $this->createAgentWithAccount();
@@ -44,7 +45,7 @@ class FloatManagementServiceTest extends TestCase
         $this->assertInstanceOf(\App\Models\DualControlRequest::class, $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_executes_topup_immediately_if_under_threshold(): void
     {
         $agentData = $this->createAgentWithAccount(1000000, [
@@ -76,7 +77,7 @@ class FloatManagementServiceTest extends TestCase
         $this->assertEquals(1400000, $agentData['account']->balance);
     }
 
-    /** @test */
+    #[Test]
     public function it_calculates_security_deposit_split_correctly(): void
     {
         $agentData = $this->createAgentWithAccount(0);
@@ -93,7 +94,7 @@ class FloatManagementServiceTest extends TestCase
         $this->assertEquals(40000, $agentData['account']->security_deposit_balance); // 40% hold
     }
 
-    /** @test */
+    #[Test]
     public function it_deducts_float_for_ticket_sale_if_sufficient_balance(): void
     {
         $agentData = $this->createAgentWithAccount(100000);
@@ -110,7 +111,7 @@ class FloatManagementServiceTest extends TestCase
         $this->assertEquals(2, $tx->transaction_category_id); // ticket-sale
     }
 
-    /** @test */
+    #[Test]
     public function it_fails_deduction_if_insufficient_balance(): void
     {
         $agentData = $this->createAgentWithAccount(10000);
@@ -125,7 +126,7 @@ class FloatManagementServiceTest extends TestCase
         $this->service->deductForTicketSale($agentData['account'], $booking, 35000);
     }
 
-    /** @test */
+    #[Test]
     public function it_credits_refund_back_to_agent_float(): void
     {
         $agentData = $this->createAgentWithAccount(50000);
@@ -142,7 +143,7 @@ class FloatManagementServiceTest extends TestCase
         $this->assertEquals(5, $tx->transaction_category_id); // refund
     }
 
-    /** @test */
+    #[Test]
     public function it_updates_credit_limit(): void
     {
         $agentData = $this->createAgentWithAccount();

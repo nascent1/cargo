@@ -6,7 +6,7 @@
     "keywords": ["laravel", "honeyclub", "hcdp", "beekeeping"],
     "license": "proprietary",
     "require": {
-        "php": "^8.2",
+        "php": "^8.5",
         "bacon/bacon-qr-code": "^3.1",
         "barryvdh/laravel-dompdf": "^3.1",
         "chillerlan/php-qrcode": "^5.0",
@@ -76,7 +76,7 @@
             "php-http/discovery": true
         },
         "platform": {
-            "php": "8.3.0"
+            "php": "8.5.0"
         }
     },
     "minimum-stability": "stable",

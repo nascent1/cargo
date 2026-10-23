@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use App\Models\SystemConfig;
 
@@ -10,7 +11,7 @@ class BoardingFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function scanner_can_verify_and_board_ticket(): void
     {
         $scenario = $this->createCompleteBookingScenario();

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use App\Models\Booking;
 use App\Models\SystemTransaction;
@@ -20,7 +21,7 @@ class SimulationTest extends TestCase
         \Illuminate\Support\Facades\Gate::before(fn ($user, $ability) => true);
     }
 
-    /** @test */
+    #[Test]
     public function high_volume_booking_simulation(): void
     {
         $agentData = $this->createAgentWithAccount(5000000); // 5M float
@@ -76,7 +77,7 @@ class SimulationTest extends TestCase
         $this->assertEquals(4240000, (float) $agentData['account']->balance);
     }
 
-    /** @test */
+    #[Test]
     public function double_payment_simulation(): void
     {
         $agentData = $this->createAgentWithAccount(100000);
@@ -124,7 +125,7 @@ class SimulationTest extends TestCase
         $this->assertEquals(62000, (float) $agentData['account']->balance);
     }
 
-    /** @test */
+    #[Test]
     public function agent_float_exhaustion_simulation(): void
     {
         // Agent with just enough for 1 ticket (40k net 38k)
@@ -166,7 +167,7 @@ class SimulationTest extends TestCase
         $this->assertStringContainsString('Insufficient wallet balance', $pay2->json('message'));
     }
 
-    /** @test */
+    #[Test]
     public function expired_hold_cleanup_simulation(): void
     {
         $agentData = $this->createAgentWithAccount(100000);
@@ -208,7 +209,7 @@ class SimulationTest extends TestCase
         $this->assertEquals(0, $booking->items()->where('status', 'held')->count());
     }
 
-    /** @test */
+    #[Test]
     public function full_day_operation_simulation(): void
     {
         // Setup Agent

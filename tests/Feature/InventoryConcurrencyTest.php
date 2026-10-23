@@ -6,13 +6,14 @@ use App\Models\Booking;
 use App\Services\BookingCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class InventoryConcurrencyTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function simultaneous_bookings_for_same_seat_prevent_double_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();

@@ -10,6 +10,7 @@ use App\Models\Booking;
 use App\Models\SystemConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -28,7 +29,7 @@ class EventsAndOperationsTest extends TestCase
 
     // ── Event Dispatch Tests ─────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function booking_cancelled_event_is_dispatched(): void
     {
         Event::fake([BookingCancelled::class]);
@@ -45,7 +46,7 @@ class EventsAndOperationsTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function booking_cancelled_event_carries_penalty_data(): void
     {
         Event::fake([BookingCancelled::class]);
@@ -63,7 +64,7 @@ class EventsAndOperationsTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function booking_expired_event_is_dispatched_on_expiry(): void
     {
         Event::fake([BookingExpired::class]);
@@ -88,7 +89,7 @@ class EventsAndOperationsTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function booking_confirmed_event_has_correct_properties(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -102,7 +103,7 @@ class EventsAndOperationsTest extends TestCase
         $this->assertNotNull($event->booking);
     }
 
-    /** @test */
+    #[Test]
     public function ticket_rescheduled_event_tracks_fare_difference(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -124,14 +125,14 @@ class EventsAndOperationsTest extends TestCase
 
     // ── Reconciliation Command Tests ─────────────────────────
 
-    /** @test */
+    #[Test]
     public function reconciliation_command_runs_without_errors(): void
     {
         $this->artisan('financials:reconcile', ['--date' => now()->toDateString()])
             ->assertExitCode(0);
     }
 
-    /** @test */
+    #[Test]
     public function reconciliation_detects_orphaned_bookings(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -153,7 +154,7 @@ class EventsAndOperationsTest extends TestCase
 
     // ── Booking Expiry Tests ─────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function expire_holds_command_only_expires_past_deadline(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -190,7 +191,7 @@ class EventsAndOperationsTest extends TestCase
         $this->assertEquals('held', $valid->status);
     }
 
-    /** @test */
+    #[Test]
     public function expire_holds_dry_run_does_not_change_status(): void
     {
         $scenario = $this->createCompleteBookingScenario();

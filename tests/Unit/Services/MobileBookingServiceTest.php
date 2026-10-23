@@ -8,6 +8,7 @@ use App\Models\Voyage;
 use App\Models\FerryClass;
 use App\Services\MobileBookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class MobileBookingServiceTest extends TestCase
@@ -22,7 +23,7 @@ class MobileBookingServiceTest extends TestCase
         $this->service = app(MobileBookingService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_cryptographic_qr_token_not_predictable(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -52,7 +53,7 @@ class MobileBookingServiceTest extends TestCase
         $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $ticket->qr_code_token);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_unique_qr_tokens_per_ticket(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -81,7 +82,7 @@ class MobileBookingServiceTest extends TestCase
         $this->assertCount(2, array_unique($tokens), 'Each ticket must have a unique QR token');
     }
 
-    /** @test */
+    #[Test]
     public function it_uses_usd_pricing_for_usd_currency_bookings(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -113,7 +114,7 @@ class MobileBookingServiceTest extends TestCase
         $this->assertEquals('USD', $booking->currency);
     }
 
-    /** @test */
+    #[Test]
     public function it_uses_tzs_pricing_for_tzs_currency_bookings(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -138,7 +139,7 @@ class MobileBookingServiceTest extends TestCase
         $this->assertEquals(35000.00, (float) $ticket->final_fare);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_seat_layout_from_ferry_config_not_hardcoded(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -166,7 +167,7 @@ class MobileBookingServiceTest extends TestCase
         $this->assertEquals("2D", $result['layout']['grid'][1][4]);
     }
 
-    /** @test */
+    #[Test]
     public function it_falls_back_to_capacity_grid_when_no_layout_configured(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -181,7 +182,7 @@ class MobileBookingServiceTest extends TestCase
         $this->assertIsArray($result['layout']['held']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_reservation_too_close_to_departure(): void
     {
         $scenario = $this->createCompleteBookingScenario();

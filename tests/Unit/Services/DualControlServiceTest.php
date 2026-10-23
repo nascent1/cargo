@@ -6,6 +6,7 @@ use App\Models\DualControlConfig;
 use App\Models\DualControlRequest;
 use App\Services\DualControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class DualControlServiceTest extends TestCase
@@ -20,7 +21,7 @@ class DualControlServiceTest extends TestCase
         $this->service = new DualControlService();
     }
 
-    /** @test */
+    #[Test]
     public function it_submits_dual_control_request_and_leaves_it_pending(): void
     {
         DualControlConfig::firstOrCreate(
@@ -41,7 +42,7 @@ class DualControlServiceTest extends TestCase
         $this->assertNull($request->checker_id);
     }
 
-    /** @test */
+    #[Test]
     public function it_auto_approves_if_dual_control_is_disabled(): void
     {
         DualControlConfig::firstOrCreate(
@@ -63,7 +64,7 @@ class DualControlServiceTest extends TestCase
         $this->assertNotNull($request->resolved_at);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_checker_to_approve(): void
     {
         DualControlConfig::firstOrCreate(
@@ -93,7 +94,7 @@ class DualControlServiceTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_checker_to_reject(): void
     {
         DualControlConfig::firstOrCreate(
@@ -119,7 +120,7 @@ class DualControlServiceTest extends TestCase
         $this->assertEquals('Nope', $rejectedRequest->checker_comment);
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_maker_from_approving_own_request(): void
     {
         DualControlConfig::firstOrCreate(
@@ -141,7 +142,7 @@ class DualControlServiceTest extends TestCase
         $this->service->approve($request, 'Looks good');
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_maker_from_rejecting_own_request(): void
     {
         DualControlConfig::firstOrCreate(

@@ -9,6 +9,7 @@ use App\Models\SystemTransaction;
 use App\Models\Ticket;
 use App\Services\BookingCancellationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingCancellationServiceTest extends TestCase
@@ -23,7 +24,7 @@ class BookingCancellationServiceTest extends TestCase
         $this->service = app(BookingCancellationService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_cancels_a_full_booking_and_records_penalty(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -45,7 +46,7 @@ class BookingCancellationServiceTest extends TestCase
         $this->assertEquals(3500.00, (float) $penaltyTx->amount);
     }
 
-    /** @test */
+    #[Test]
     public function it_calculates_penalty_based_on_config(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -65,7 +66,7 @@ class BookingCancellationServiceTest extends TestCase
         $this->assertEquals(7000.00, (float) $penaltyTx->amount); // 20% of 35000
     }
 
-    /** @test */
+    #[Test]
     public function it_cancels_individual_ticket_without_cancelling_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -86,7 +87,7 @@ class BookingCancellationServiceTest extends TestCase
         $this->assertEquals('confirmed', $ticketToKeep->status);
     }
 
-    /** @test */
+    #[Test]
     public function it_cancels_entire_booking_if_all_tickets_are_cancelled(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -104,7 +105,7 @@ class BookingCancellationServiceTest extends TestCase
         $this->assertEquals('cancelled', $booking->status);
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_cancellation_of_boarded_ticket(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -118,7 +119,7 @@ class BookingCancellationServiceTest extends TestCase
         $this->service->cancelTicket($ticket, 'Too late', clone $user);
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_cancellation_past_allowed_window(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -137,7 +138,7 @@ class BookingCancellationServiceTest extends TestCase
         $this->service->cancelBooking($booking, 'Too late', clone $user);
     }
 
-    /** @test */
+    #[Test]
     public function agent_immediate_refund_credits_wallet(): void
     {
         $agentData = $this->createAgentWithAccount(100000, [

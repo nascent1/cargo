@@ -4,13 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\Coupon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class DiscountFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function agent_can_validate_and_apply_coupon(): void
     {
         $agentData = $this->createAgentWithAccount();

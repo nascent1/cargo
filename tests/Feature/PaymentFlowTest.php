@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Gateways\Payment\SelcomGateway;
 use App\Models\Booking;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Mockery;
 
@@ -12,7 +13,7 @@ class PaymentFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function selcom_webhook_completes_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();

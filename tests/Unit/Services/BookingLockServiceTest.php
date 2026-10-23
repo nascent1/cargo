@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\Passenger;
 use App\Services\BookingLockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingLockServiceTest extends TestCase
@@ -22,7 +23,7 @@ class BookingLockServiceTest extends TestCase
         $this->service = app(BookingLockService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_acquires_a_lock_for_available_seats(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -41,7 +42,7 @@ class BookingLockServiceTest extends TestCase
         $this->assertFalse($lock->expires_at->isPast());
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_overbooking_beyond_capacity(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -68,7 +69,7 @@ class BookingLockServiceTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_releases_locks_correctly(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -86,7 +87,7 @@ class BookingLockServiceTest extends TestCase
         $this->assertNull(BookingLock::find($lock->id));
     }
 
-    /** @test */
+    #[Test]
     public function it_consumes_lock_into_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -111,7 +112,7 @@ class BookingLockServiceTest extends TestCase
         $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'confirmed']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_expired_locks(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -138,7 +139,7 @@ class BookingLockServiceTest extends TestCase
         $this->assertInstanceOf(BookingLock::class, $newLock);
     }
 
-    /** @test */
+    #[Test]
     public function concurrent_locks_respect_total_capacity(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -174,7 +175,7 @@ class BookingLockServiceTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function sold_tickets_reduce_available_capacity(): void
     {
         $scenario = $this->createCompleteBookingScenario();

@@ -6,13 +6,14 @@ use App\Models\SystemTransaction;
 use App\Models\AgentAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AgentAccountConcurrencyTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function simultaneous_wallet_deductions_prevent_race_conditions(): void
     {
         // This test proves BUG-004: Concurrency issue on Agent float subtraction

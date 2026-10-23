@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\CreatesTestData;
 use App\Models\Agent;
@@ -343,7 +344,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 1: EXISTING REPORTS — SUPERADMIN (sees all)
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function superadmin_revenue_report_sees_all_data()
     {
         $this->actingAs($this->superAdmin);
@@ -359,7 +360,7 @@ class ReportSimulationTest extends TestCase
         $this->assertGreaterThanOrEqual(20, $totalTickets);
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_booking_report_sees_all_tickets()
     {
         $this->actingAs($this->superAdmin);
@@ -374,7 +375,7 @@ class ReportSimulationTest extends TestCase
         $this->assertGreaterThanOrEqual(20, count($data));
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_cancellation_report_sees_all_cancelled()
     {
         $this->actingAs($this->superAdmin);
@@ -389,7 +390,7 @@ class ReportSimulationTest extends TestCase
         $this->assertGreaterThanOrEqual(2, count($data));
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_occupancy_report_returns_voyage_data()
     {
         $this->actingAs($this->superAdmin);
@@ -410,7 +411,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_manifest_report_returns_passengers()
     {
         $this->actingAs($this->superAdmin);
@@ -432,7 +433,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_boarding_report_shows_boarded_and_no_shows()
     {
         $this->actingAs($this->superAdmin);
@@ -453,7 +454,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_float_ledger_shows_agent_transactions()
     {
         $this->actingAs($this->superAdmin);
@@ -468,7 +469,7 @@ class ReportSimulationTest extends TestCase
         $this->assertNotEmpty($data);
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_agent_performance_report_shows_all_agents()
     {
         $this->actingAs($this->superAdmin);
@@ -484,7 +485,7 @@ class ReportSimulationTest extends TestCase
         $this->assertGreaterThanOrEqual(2, count($data));
     }
 
-    /** @test */
+    #[Test]
     public function superadmin_projections_returns_analytics()
     {
         $this->actingAs($this->superAdmin);
@@ -500,7 +501,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 2: COUNTER STAFF (sees own data only)
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function counter_staff_booking_report_sees_only_own_bookings()
     {
         $this->actingAs($this->counterStaff1);
@@ -516,7 +517,7 @@ class ReportSimulationTest extends TestCase
         $this->assertLessThanOrEqual(10, count($data));
     }
 
-    /** @test */
+    #[Test]
     public function counter_staff_revenue_report_scoped_to_own()
     {
         $this->actingAs($this->counterStaff1);
@@ -534,7 +535,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 3: AGENT (sees own agency's data)
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function agent_booking_report_includes_associate_bookings()
     {
         $this->actingAs($this->agent1User);
@@ -551,7 +552,7 @@ class ReportSimulationTest extends TestCase
         $this->assertGreaterThanOrEqual(8, count($data));
     }
 
-    /** @test */
+    #[Test]
     public function agent_cannot_see_other_agent_float_ledger_via_portal()
     {
         $this->actingAs($this->agent1User);
@@ -562,7 +563,7 @@ class ReportSimulationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function agent_portal_report_api_returns_own_tickets()
     {
         $this->actingAs($this->agent1User);
@@ -584,7 +585,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 4: ASSOCIATE AGENT (sees only own data)
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function associate_booking_report_sees_only_own_bookings()
     {
         $this->actingAs($this->associate1User);
@@ -599,7 +600,7 @@ class ReportSimulationTest extends TestCase
         $this->assertCount(3, $data);
     }
 
-    /** @test */
+    #[Test]
     public function associate_cannot_see_other_associates_bookings()
     {
         $this->actingAs($this->associate1User);
@@ -616,7 +617,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function associate_portal_api_returns_only_own_data()
     {
         $this->actingAs($this->associate1User);
@@ -635,7 +636,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 5: NEW REPORTS — PAYMENT CHANNEL ANALYSIS
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function payment_channel_analysis_returns_correct_breakdown()
     {
         $this->actingAs($this->superAdmin);
@@ -669,7 +670,7 @@ class ReportSimulationTest extends TestCase
         $this->assertLessThanOrEqual(101, $totalShare);
     }
 
-    /** @test */
+    #[Test]
     public function payment_channel_analysis_cash_vs_agent_float_correct()
     {
         $this->actingAs($this->superAdmin);
@@ -697,7 +698,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 6: NEW REPORTS — PEAK HOUR ANALYSIS
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function peak_hour_analysis_returns_24_hours()
     {
         $this->actingAs($this->superAdmin);
@@ -720,7 +721,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function peak_hour_analysis_identifies_peak_hours()
     {
         $this->actingAs($this->superAdmin);
@@ -745,7 +746,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function peak_hour_portal_api_works_for_agent()
     {
         $this->actingAs($this->agent1User);
@@ -763,7 +764,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 7: NEW REPORTS — ROUTE PROFITABILITY
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function route_profitability_ranks_routes_correctly()
     {
         $this->actingAs($this->superAdmin);
@@ -795,7 +796,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function route_profitability_revenue_per_seat_is_accurate()
     {
         $this->actingAs($this->superAdmin);
@@ -818,7 +819,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 8: NEW REPORTS — CANCELLATION TRENDS
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function cancellation_trends_returns_daily_and_route_data()
     {
         $this->actingAs($this->superAdmin);
@@ -840,7 +841,7 @@ class ReportSimulationTest extends TestCase
         $this->assertArrayHasKey('recovery_rate_percent', $summary);
     }
 
-    /** @test */
+    #[Test]
     public function cancellation_trends_penalty_recovery_rate_is_correct()
     {
         $this->actingAs($this->superAdmin);
@@ -858,7 +859,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function cancellation_trends_counts_match_actual_cancellations()
     {
         $this->actingAs($this->superAdmin);
@@ -873,7 +874,7 @@ class ReportSimulationTest extends TestCase
         $this->assertGreaterThanOrEqual(2, $data['summary']['total_cancellations']);
     }
 
-    /** @test */
+    #[Test]
     public function cancellation_trends_portal_api_works_for_agent()
     {
         $this->actingAs($this->agent1User);
@@ -888,7 +889,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 9: NEW REPORTS — COMMISSION RECONCILIATION
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function commission_reconciliation_admin_sees_all_agents()
     {
         $this->actingAs($this->superAdmin);
@@ -909,7 +910,7 @@ class ReportSimulationTest extends TestCase
         $this->assertGreaterThanOrEqual(2, count($data));
     }
 
-    /** @test */
+    #[Test]
     public function commission_reconciliation_detects_discrepancy()
     {
         $this->actingAs($this->superAdmin);
@@ -929,7 +930,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function commission_reconciliation_agent_portal_sees_own_only()
     {
         $this->actingAs($this->agent1User);
@@ -945,7 +946,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function commission_reconciliation_has_correct_structure()
     {
         $this->actingAs($this->superAdmin);
@@ -973,7 +974,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 10: DATA ISOLATION TESTS
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function agent2_cannot_see_agent1_float_ledger()
     {
         $this->actingAs($this->agent2User);
@@ -989,7 +990,7 @@ class ReportSimulationTest extends TestCase
         $this->assertCount(0, $agent1Transactions, 'Agent2 must not see Agent1 transactions');
     }
 
-    /** @test */
+    #[Test]
     public function associate_cannot_see_other_associate_portal_data()
     {
         $this->actingAs($this->associate1User);
@@ -1005,7 +1006,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function commission_reconciliation_rejects_non_agent_users()
     {
         $this->actingAs($this->counterStaff1);
@@ -1019,7 +1020,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 11: EDGE CASES & MULTI-CURRENCY
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function empty_date_range_returns_empty_not_error()
     {
         $this->actingAs($this->superAdmin);
@@ -1032,7 +1033,7 @@ class ReportSimulationTest extends TestCase
         $this->assertEmpty($data);
     }
 
-    /** @test */
+    #[Test]
     public function future_date_range_returns_no_data()
     {
         $this->actingAs($this->superAdmin);
@@ -1046,7 +1047,7 @@ class ReportSimulationTest extends TestCase
         $this->assertEmpty($data);
     }
 
-    /** @test */
+    #[Test]
     public function multi_currency_booking_report_handles_usd_correctly()
     {
         $this->actingAs($this->superAdmin);
@@ -1066,7 +1067,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function cancelled_ticket_has_correct_penalty_in_booking_report()
     {
         $this->actingAs($this->superAdmin);
@@ -1087,7 +1088,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function payment_analysis_growth_handles_no_previous_period()
     {
         $this->actingAs($this->superAdmin);
@@ -1106,7 +1107,7 @@ class ReportSimulationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function route_profitability_filter_by_route_works()
     {
         $this->actingAs($this->superAdmin);
@@ -1128,7 +1129,7 @@ class ReportSimulationTest extends TestCase
     //  SECTION 12: ADMIN WEB ENDPOINT TESTS
     // ═══════════════════════════════════════════════════════════
 
-    /** @test */
+    #[Test]
     public function admin_payment_analysis_page_loads()
     {
         $this->actingAs($this->superAdmin);
@@ -1136,7 +1137,7 @@ class ReportSimulationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function admin_peak_hours_page_loads()
     {
         $this->actingAs($this->superAdmin);
@@ -1144,7 +1145,7 @@ class ReportSimulationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function admin_route_profitability_page_loads()
     {
         $this->actingAs($this->superAdmin);
@@ -1152,7 +1153,7 @@ class ReportSimulationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function admin_cancellation_trends_page_loads()
     {
         $this->actingAs($this->superAdmin);
@@ -1160,7 +1161,7 @@ class ReportSimulationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function admin_commission_reconciliation_page_loads()
     {
         $this->actingAs($this->superAdmin);
@@ -1168,7 +1169,7 @@ class ReportSimulationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function admin_reports_hub_loads_with_new_cards()
     {
         $this->actingAs($this->superAdmin);
@@ -1181,7 +1182,7 @@ class ReportSimulationTest extends TestCase
         $response->assertSee('Commission Reconciliation');
     }
 
-    /** @test */
+    #[Test]
     public function admin_payment_analysis_with_run_returns_data()
     {
         $this->actingAs($this->superAdmin);
@@ -1193,7 +1194,7 @@ class ReportSimulationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function admin_cancellation_trends_with_run_returns_data()
     {
         $this->actingAs($this->superAdmin);

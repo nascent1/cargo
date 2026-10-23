@@ -7,6 +7,7 @@ use App\Models\CouponUsage;
 use App\Models\Promotion;
 use App\Services\CouponService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class CouponServiceTest extends TestCase
@@ -22,7 +23,7 @@ class CouponServiceTest extends TestCase
         $this->service = app(CouponService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_validates_valid_coupon_successfully(): void
     {
         $coupon = Coupon::create([
@@ -37,7 +38,7 @@ class CouponServiceTest extends TestCase
         $this->assertEquals($coupon->id, $validated->id);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_invalid_or_expired_coupon(): void
     {
         $coupon = Coupon::create([
@@ -54,7 +55,7 @@ class CouponServiceTest extends TestCase
         $this->service->validate('EXPIRED', 50000, 'TZS');
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_coupon_if_max_uses_reached(): void
     {
         $coupon = Coupon::create([
@@ -72,7 +73,7 @@ class CouponServiceTest extends TestCase
         $this->service->validate('MAXEDOUT', 50000, 'TZS');
     }
 
-    /** @test */
+    #[Test]
     public function it_respects_target_audience_restrictions(): void
     {
         Coupon::create([
@@ -94,7 +95,7 @@ class CouponServiceTest extends TestCase
         $this->service->validate('RESIDENTSONLY', 50, 'USD');
     }
 
-    /** @test */
+    #[Test]
     public function it_previews_coupon_discount(): void
     {
         Coupon::create([
@@ -111,7 +112,7 @@ class CouponServiceTest extends TestCase
         $this->assertEquals(85000.0, $preview['final_amount']);
     }
 
-    /** @test */
+    #[Test]
     public function it_redeems_coupon_and_records_usage(): void
     {
         $scenario = $this->createCompleteBookingScenario();
@@ -151,7 +152,7 @@ class CouponServiceTest extends TestCase
         $this->assertEquals(5000.0, $promo->budget_used);
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_redeeming_same_coupon_twice_for_same_booking(): void
     {
         $scenario = $this->createCompleteBookingScenario();

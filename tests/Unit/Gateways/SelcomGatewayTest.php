@@ -3,6 +3,7 @@
 namespace Tests\Unit\Gateways;
 
 use App\Gateways\Payment\SelcomGateway;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SelcomGatewayTest extends TestCase
@@ -15,7 +16,7 @@ class SelcomGatewayTest extends TestCase
         $this->gateway = new SelcomGateway();
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_webhook_with_empty_signature(): void
     {
         config(['services.selcom.api_secret' => 'test-secret-key']);
@@ -26,7 +27,7 @@ class SelcomGatewayTest extends TestCase
         $this->assertFalse($this->gateway->verifyWebhook($payload, ''));
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_webhook_with_no_api_secret_configured(): void
     {
         config(['services.selcom.api_secret' => null]);
@@ -36,7 +37,7 @@ class SelcomGatewayTest extends TestCase
         $this->assertFalse($this->gateway->verifyWebhook($payload, 'some-signature'));
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_webhook_with_forged_signature(): void
     {
         config(['services.selcom.api_secret' => 'real-secret-key']);
@@ -47,7 +48,7 @@ class SelcomGatewayTest extends TestCase
         $this->assertFalse($this->gateway->verifyWebhook($payload, 'totally-fake-signature'));
     }
 
-    /** @test */
+    #[Test]
     public function it_accepts_webhook_with_valid_hmac_signature(): void
     {
         $secret = 'test-secret-key-12345';
@@ -62,7 +63,7 @@ class SelcomGatewayTest extends TestCase
         $this->assertTrue($this->gateway->verifyWebhook($payload, $validDigest));
     }
 
-    /** @test */
+    #[Test]
     public function it_accepts_webhook_with_sha256_prefixed_signature(): void
     {
         $secret = 'test-secret-key-12345';
@@ -77,7 +78,7 @@ class SelcomGatewayTest extends TestCase
         $this->assertTrue($this->gateway->verifyWebhook($payload, "SHA-256={$validDigest}"));
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_webhook_when_payload_is_tampered(): void
     {
         $secret = 'test-secret-key-12345';
@@ -96,7 +97,7 @@ class SelcomGatewayTest extends TestCase
         $this->assertFalse($this->gateway->verifyWebhook($tamperedPayload, $validDigest));
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_not_configured_when_credentials_missing(): void
     {
         config(['services.selcom.api_key' => null]);
@@ -114,7 +115,7 @@ class SelcomGatewayTest extends TestCase
         $this->assertStringContainsString('not yet configured', $result['message']);
     }
 
-    /** @test */
+    #[Test]
     public function refund_returns_not_configured_when_credentials_missing(): void
     {
         config(['services.selcom.api_key' => null]);

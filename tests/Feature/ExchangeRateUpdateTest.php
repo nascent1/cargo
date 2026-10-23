@@ -53,6 +53,8 @@ class ExchangeRateUpdateTest extends TestCase
 
     public function test_conversions_use_the_rate_in_force_on_the_day(): void
     {
+        // Rates already set on this database would clash with these dates (rolled back with the test)
+        ExchangeRate::where('from_currency', 'USD')->where('to_currency', 'TZS')->delete();
         $this->usdRate(today()->subDays(10)->toDateString(), 2500);
         $this->usdRate(today()->subDays(3)->toDateString(), 2550);
         $this->usdRate(today()->addDays(5)->toDateString(), 2700);
