@@ -192,6 +192,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/', [UserController::class, 'store'])->name('store')->middleware('permission:user:create');
             Route::get('/{user}', [UserController::class, 'show'])->name('show')->middleware('permission:user:read');
             Route::patch('/{user}/status', [UserController::class, 'updateStatus'])->name('update-status')->middleware('permission:user:update');
+            Route::patch('/{user}/station', [UserController::class, 'updateStation'])->name('update-station')->middleware('permission:user:update');
             Route::put('/{user}/roles', [UserController::class, 'updateRoles'])->name('update-roles')->middleware('permission:role:assign');
             Route::post('/{user}/reset-2fa', [UserController::class, 'reset2fa'])->name('reset-2fa')->middleware('permission:user:update');
             Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->name('reset-password')->middleware('permission:user:update');

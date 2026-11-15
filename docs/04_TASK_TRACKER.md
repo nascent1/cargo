@@ -34,7 +34,7 @@ Use the next number for later phases. The session then:
 | Phase | Status | Depends on | Information needed first |
 |---|---|---|---|
 | Planning: documents 01 to 04 | Approved 15 Nov 2026; staged for you to commit | — | — |
-| 0 Foundations | Not started | — | — |
+| 0 Foundations | Delivered 15 Nov 2026; awaiting your acceptance | — | — |
 | 1 Tariff | Not started | 0 | — |
 | 2 Parcel flow | Not started | 0, 1 | — |
 | 3 Customers, quotations, contracts | Not started | 0 | Vessel particulars (D-14) from operations; cancellation fee percentages (D-17) from management |
@@ -47,18 +47,18 @@ The late-collection percentage is 0 (no charge) until management sets it in sett
 
 ## Phase 0 — Foundations
 
-- [ ] Baseline recorded; `pg_dump` taken
-- [ ] `scripts/make-test-db.sh` creates `uclp_cargo_test` from the structure and reference data of `uclp_cargo`
-- [ ] Tests refuse to run unless the database name ends in `_test`; the password leaves `phpunit.xml`
-- [ ] Rollback added to `CargoAdminCrudTest`, `CargoBookingFlowTest`, `CargoPermissionsTest` and `CargoPortalAuthTest`; a `cargo` test suite lists the safe files
-- [ ] Status enums and `ConsignmentStateMachine`, defined but not yet used by the flows
-- [ ] `Money` helper
-- [ ] Document numbering (`document_sequences`) and attachments
-- [ ] Duty station on users: migration, model, user screens
-- [ ] `voyage:generate` removed from the scheduler
-- [ ] Service-line switches `parcel_receive_flow_enabled` and `contract_cargo_enabled`, both off
-- [ ] New tests pass; the cargo suite passes on the test database; development row counts unchanged
-- [ ] Walkthrough given
+- [x] Baseline recorded; `pg_dump` taken
+- [x] `scripts/make-test-db.sh` creates `uclp_cargo_test` from the structure and reference data of `uclp_cargo`
+- [x] Tests refuse to run unless the database name ends in `_test`; the password leaves `phpunit.xml`
+- [x] Rollback added to `CargoAdminCrudTest`, `CargoBookingFlowTest`, `CargoPermissionsTest` and `CargoPortalAuthTest`; a `cargo` test suite lists the safe files
+- [x] Status enums and `ConsignmentStateMachine`, defined but not yet used by the flows
+- [x] `Money` helper
+- [x] Document numbering (`document_sequences`) and attachments
+- [x] Duty station on users: migration, model, user screens
+- [x] `voyage:generate` removed from the scheduler
+- [x] Service-line switches `parcel_receive_flow_enabled` and `contract_cargo_enabled`, both off
+- [x] New tests pass; the cargo suite passes on the test database; development row counts unchanged
+- [x] Walkthrough given
 - [ ] Accepted or rejected
 
 ## Phase 1 — Tariff
@@ -199,3 +199,7 @@ Choose from the Phase 7 table in plan section 5. Each chosen option gets its own
 | Date | Phase | Note |
 |---|---|---|
 | 15 Nov 2026 | Planning | Documents 01 to 04 approved; D-30 settled as a flat price |
+| 15 Nov 2026 | 0 | Short revised plan approved: `.gitignore`, a duty-station route, the settings toggles, valid domains on the create-user form, the default `cargo` suite with legacy files skipped, and one committed parallel test |
+| 15 Nov 2026 | 0 | Delivered. `php artisan test` runs the `cargo` suite on `uclp_cargo_test`: 181 tests pass. After the development database is migrated in a later phase, run `scripts/make-test-db.sh` again |
+| 15 Nov 2026 | 0 | `CargoAdminCrudTest` and `CargoBookingFlowTest` have rollback but are not in the suite: 13 of their 15 tests call endpoints removed before this programme. To be deleted or rewritten, as you decide |
+| 15 Nov 2026 | 0 | `CargoInventoryTest` now picks two departures on different routes; it failed at random when it picked two on one route |

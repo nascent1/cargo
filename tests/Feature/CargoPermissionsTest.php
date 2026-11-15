@@ -2,13 +2,15 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class CargoPermissionsTest extends TestCase
 {
+    use DatabaseTransactions; // everything a test writes is rolled back
+
     /**
      * Test that cargo permissions are assigned to expected roles.
      */

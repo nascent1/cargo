@@ -50,7 +50,7 @@
                 <div>
                     <label class="block text-xs font-medium text-surface-700 mb-1.5">Domain <span class="text-red-500">*</span></label>
                     <select name="domain" required class="w-full rounded-xl border-0 py-2.5 px-3 text-sm ring-1 ring-inset ring-surface-200 focus:ring-2 focus:ring-brand-500 bg-white shadow-sm">
-                        @foreach(['system_user' => 'System User', 'beekeeper' => 'Beekeeper', 'consumer' => 'Consumer', 'investor' => 'Investor'] as $k => $v)
+                        @foreach(['system_user' => 'System User (staff)', 'agent' => 'Agent', 'associate_agent' => 'Associate Agent', 'passenger' => 'Passenger'] as $k => $v)
                             <option value="{{ $k }}" {{ old('domain') === $k ? 'selected' : '' }}>{{ $v }}</option>
                         @endforeach
                     </select>
@@ -66,6 +66,16 @@
                             </label>
                         @endforeach
                     </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="station_id" class="block text-xs font-medium text-surface-700 mb-1.5">Duty Station</label>
+                    <select name="station_id" id="station_id" class="w-full md:w-1/2 rounded-xl border-0 py-2.5 px-3 text-sm ring-1 ring-inset ring-surface-200 focus:ring-2 focus:ring-brand-500 bg-white shadow-sm">
+                        <option value="">Not set</option>
+                        @foreach($stations as $station)
+                            <option value="{{ $station->id }}" {{ (string) old('station_id') === (string) $station->id ? 'selected' : '' }}>{{ $station->name }} ({{ $station->code }})</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-surface-400 mt-1.5">Where this person works. It can be set or changed later from their profile.</p>
                 </div>
                 <!-- Password fields removed as they are auto-generated and sent via SMS -->
             </div>

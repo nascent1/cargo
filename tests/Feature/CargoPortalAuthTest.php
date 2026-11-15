@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 use App\Models\User;
 
 class CargoPortalAuthTest extends TestCase
 {
+    use DatabaseTransactions; // everything a test writes is rolled back
+
     /**
      * Test portal /me web route returns user data for authenticated user.
      */

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ConsignmentStatus;
+use App\Enums\ServiceType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -12,6 +14,7 @@ class Consignment extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
+        'service_type' => ServiceType::class,
         'total_amount_tzs' => 'decimal:2',
         'total_amount_usd' => 'decimal:2',
         'discount_amount' => 'decimal:2',
@@ -82,6 +85,21 @@ class Consignment extends Model
     {
         // At most one attempt is open at a time (CargoPaymentService closes the previous one)
         return $this->hasOne(CargoPayment::class)->whereIn('status', CargoPayment::OPEN_STATUSES);
+    }
+
+    /** Parcel or contract cargo. A consignment not yet reloaded from the database is a parcel, the column's default. */
+    public function serviceLine(): ServiceType
+    {
+        return $this->service_type ?? ServiceType::Parcel;
+    }
+
+    /**
+     * The status as defined in ConsignmentStatus, reading the names stored before the rename too.
+     * Null for a value that is not a status of this consignment's service line.
+     */
+    public function statusEnum(): ?ConsignmentStatus
+    {
+        return ConsignmentStatus::fromStored($this->status, $this->serviceLine());
     }
 
     public function isAwaitingPayment(): bool

@@ -13,7 +13,6 @@ Artisan::command('inspire', function () {
 Schedule::command('cargo:clear-locks')->everyMinute()->name('cargo-clear-locks')->withoutOverlapping();
 Schedule::command('cargo:payments-sweep')->everyMinute()->name('cargo-payments-sweep')->withoutOverlapping();
 Schedule::command('cargo:generate-services', ['--days' => 30])->dailyAt('00:05')->name('generate-services')->withoutOverlapping();
-Schedule::command('voyage:generate', ['--days' => 30])->dailyAt('00:05')->name('generate-voyages')->withoutOverlapping();
 Schedule::command('cargo:auto-transit')->everyFifteenMinutes()->name('cargo-auto-transit')->withoutOverlapping();
 Schedule::command('cargo:auto-arrived')->hourly()->name('cargo-auto-arrived')->withoutOverlapping();
 Schedule::command('cargo:mark-unclaimed')->dailyAt('02:00')->name('cargo-mark-unclaimed')->withoutOverlapping();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\CargoType;
@@ -12,6 +13,8 @@ use App\Models\Station;
 
 class CargoAdminCrudTest extends TestCase
 {
+    use DatabaseTransactions; // everything a test writes is rolled back
+
     private function adminUser(): User
     {
         return User::whereHas('roles', fn($q) => $q->where('slug', 'admin'))->firstOrFail();

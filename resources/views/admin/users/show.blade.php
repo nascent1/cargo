@@ -23,6 +23,18 @@
                 <div class="flex justify-between"><dt class="text-surface-500">Phone</dt><dd class="font-medium text-surface-900">{{ $user->phone ?? '—' }}</dd></div>
                 <div class="flex justify-between"><dt class="text-surface-500">National ID</dt><dd class="font-medium text-surface-900">{{ $user->national_id ?? '—' }}</dd></div>
                 <div class="flex justify-between"><dt class="text-surface-500">Domain</dt><dd class="font-medium text-surface-900">{{ ucfirst(str_replace('_', ' ', $user->domain)) }}</dd></div>
+                <div class="flex justify-between items-center">
+                    <dt class="text-surface-500">Duty Station</dt>
+                    <dd>
+                        @if($user->station)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-100">
+                                <i class="fas fa-location-dot text-[10px]"></i> {{ $user->station->name }} ({{ $user->station->code }})
+                            </span>
+                        @else
+                            <span class="font-medium text-surface-400">Not set</span>
+                        @endif
+                    </dd>
+                </div>
                 <div class="flex justify-between"><dt class="text-surface-500">Locale</dt><dd class="font-medium text-surface-900">{{ strtoupper($user->locale_pref ?? 'en') }}</dd></div>
                 <div class="flex justify-between"><dt class="text-surface-500">MFA</dt><dd class="font-medium {{ $user->mfa_enabled ? 'text-emerald-600' : 'text-surface-400' }}">{{ $user->mfa_enabled ? 'Enabled' : 'Disabled' }}</dd></div>
                 <div class="flex justify-between"><dt class="text-surface-500">Member Since</dt><dd class="font-medium text-surface-900">{{ $user->created_at?->format('M d, Y') }}</dd></div>
@@ -50,7 +62,23 @@
                 </div>
             @endif
 
-            {{-- Status Actions --}}
+            {{-- Duty station: where this person works (through dual control: "Change a user") --}}
+            @php $canSetStation = auth()->user()->hasPermission('user:update'); @endphp
+            <div class="mt-6 border-t border-surface-100 pt-4">
+                <h4 class="text-xs font-bold text-surface-500 uppercase tracking-wider mb-3">Duty Station</h4>
+                <form method="POST" action="{{ route('admin.users.update-station', $user) }}" class="flex gap-2">
+                    @csrf @method('PATCH')
+                    <select name="station_id" aria-label="Duty station" {{ !$canSetStation ? 'disabled' : '' }} class="flex-1 min-w-0 rounded-xl border-surface-200 text-sm py-2 {{ $canSetStation ? 'bg-white' : 'bg-surface-50 text-surface-400 cursor-not-allowed' }}">
+                        <option value="">Not set</option>
+                        @foreach($stations as $station)
+                            <option value="{{ $station->id }}" {{ $user->station_id === $station->id ? 'selected' : '' }}>{{ $station->name }} ({{ $station->code }}){{ $station->status !== 'active' ? ' — suspended' : '' }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" {{ !$canSetStation ? 'disabled' : '' }} class="rounded-xl {{ $canSetStation ? 'bg-surface-800 text-white hover:bg-surface-700' : 'bg-surface-200 text-surface-400 cursor-not-allowed' }} px-4 py-2 text-sm font-medium transition" title="{{ !$canSetStation ? 'Set duty station (No Permission)' : '' }}">Save</button>
+                </form>
+                @error('station_id')<p class="text-xs text-red-600 mt-1.5">{{ $message }}</p>@enderror
+            </div>
+
             {{-- Status Actions --}}
             @if($user->id !== auth()->id())
             <div class="mt-6 border-t border-surface-100 pt-4">

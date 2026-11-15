@@ -37,9 +37,11 @@ class CargoInventoryTest extends TestCase
         $this->officer = User::whereHas('roles', fn ($q) => $q->whereIn('slug', ['super_admin', 'admin']))->first()
             ?? $this->markTestSkipped('Needs an admin user in the database.');
 
-        $services = TransportService::whereHas('cargoInventory')->limit(2)->get();
+        // Two departures on different routes, always the same two: the test fares below are per route,
+        // and two fares for one type on one route would overlap (cargo_fares_no_overlap).
+        $services = TransportService::whereHas('cargoInventory')->orderBy('id')->get()->unique('route_id')->take(2)->values();
         if ($services->count() < 2) {
-            $this->markTestSkipped('Needs two transport services with cargo inventory.');
+            $this->markTestSkipped('Needs two transport services with cargo inventory, on different routes.');
         }
         [$this->service, $this->otherService] = [$services[0], $services[1]];
 

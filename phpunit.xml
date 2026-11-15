@@ -3,8 +3,41 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
+         defaultTestSuite="cargo"
 >
     <testsuites>
+        <!--
+            The cargo suite is the default: every file in it rolls back what it writes.
+            It runs on the test database, built by scripts/make-test-db.sh.
+            The other suites are passenger-era files that rebuild the database; they are
+            skipped unless ALLOW_DB_REFRESH=1 is set (see tests/TestCase.php).
+            CargoAdminCrudTest and CargoBookingFlowTest are left out: they call endpoints that
+            no longer exist (admin/cargo/api/stations, routes-admin, services, calculate-fare).
+        -->
+        <testsuite name="cargo">
+            <file>tests/Unit/MoneyTest.php</file>
+            <file>tests/Unit/ConsignmentStateMachineTest.php</file>
+            <file>tests/Unit/TestDatabaseGuardTest.php</file>
+            <file>tests/Feature/DocumentNumberingTest.php</file>
+            <file>tests/Feature/AttachmentServiceTest.php</file>
+            <file>tests/Feature/UserDutyStationTest.php</file>
+            <file>tests/Feature/CargoAdminScreensTest.php</file>
+            <file>tests/Feature/CargoFareVersioningTest.php</file>
+            <file>tests/Feature/CargoInventoryTest.php</file>
+            <file>tests/Feature/CargoOperationsTest.php</file>
+            <file>tests/Feature/CargoPaymentFlowTest.php</file>
+            <file>tests/Feature/CargoPermissionsTest.php</file>
+            <file>tests/Feature/CargoPortalAuthTest.php</file>
+            <file>tests/Feature/CargoPortalBookingTest.php</file>
+            <file>tests/Feature/CargoPricingTest.php</file>
+            <file>tests/Feature/CargoSmsPolicyTest.php</file>
+            <file>tests/Feature/DualControlRegistryTest.php</file>
+            <file>tests/Feature/ExchangeRateUpdateTest.php</file>
+            <file>tests/Feature/IntegrationSettingsTest.php</file>
+            <file>tests/Feature/PublicTrackingTest.php</file>
+            <file>tests/Feature/ShiftManagementTest.php</file>
+            <file>tests/Feature/SystemSettingsUpdateTest.php</file>
+        </testsuite>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
@@ -26,12 +59,9 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
+        <!-- Host, user and password come from .env (or .env.testing). Tests refuse any database not ending in _test. -->
         <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_HOST" value="127.0.0.1"/>
-        <env name="DB_PORT" value="5432"/>
-        <env name="DB_DATABASE" value="uclp_cargo"/>
-        <env name="DB_USERNAME" value="postgres"/>
-        <env name="DB_PASSWORD" value="2906@2023"/>
+        <env name="DB_DATABASE" value="uclp_cargo_test"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

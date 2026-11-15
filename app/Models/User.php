@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Traits\HasRolesAndPermissions;
 use Laravel\Sanctum\HasApiTokens;
@@ -26,6 +27,7 @@ class User extends Authenticatable implements CanResetPassword
         'first_name',
         'last_name',
         'domain',
+        'station_id',
         'locale_pref',
         'mfa_enabled',
         'mfa_secret',
@@ -128,6 +130,12 @@ class User extends Authenticatable implements CanResetPassword
     public function membership(): HasOne
     {
         return $this->hasOne(Membership::class);
+    }
+
+    /** Duty station: where this staff member works. Empty until an administrator sets it. */
+    public function station(): BelongsTo
+    {
+        return $this->belongsTo(Station::class);
     }
 
     public function activeShift(): HasOne

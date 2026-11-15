@@ -19,6 +19,8 @@
             'exchange_rate_update_frequency' => ['Exchange Rate Update Frequency', 'How often the USD to TZS rate must be set: 0 = never ask, 1 = daily, 7 = weekly. Everyone with "Keep the exchange rate up to date" (Roles) is asked when it is due.'],
             'usd_to_tzs_exchange_rate' => ['USD to TZS Rate', 'The rate in force today, from Exchange Rates. Set it from the rate prompt or under Exchange Rates.'],
             'exchange_rate_last_updated' => ['Exchange Rate Last Set', 'When today\'s rate was last set, and when it is next due.'],
+            'parcel_receive_flow_enabled' => ['Parcel Service (Receive, Assign, Board)', 'Off until the parcel flow is delivered and accepted. When on, parcels are received at the counter without a sailing, assigned to a tray on a sailing, boarded and collected.'],
+            'contract_cargo_enabled' => ['Contract Cargo', 'Off until contract cargo is delivered and accepted. When on, customers, quotations, contracts, invoices and charter voyages are available.'],
         ];
         $rateStatus = \App\Services\ExchangeRateService::updateStatus();
     @endphp
@@ -81,7 +83,7 @@
                                                 <option value="per_adult" {{ $setting->value === 'per_adult' ? 'selected' : '' }}>Per Adult</option>
                                                 <option value="per_booking" {{ $setting->value === 'per_booking' ? 'selected' : '' }}>Per Booking</option>
                                             </select>
-                                        @elseif(in_array($setting->key_name, ['restrict_agent_routes', 'restrict_agent_ferries', 'shift_management_enabled', 'sms_enabled', 'sms_booking_confirmation_sender', 'sms_booking_confirmation_receiver', 'enable_2fa', 'enable_exchange_rate_conversion', 'agent_can_book_foreigners']))
+                                        @elseif(in_array($setting->key_name, ['restrict_agent_routes', 'restrict_agent_ferries', 'shift_management_enabled', 'sms_enabled', 'sms_booking_confirmation_sender', 'sms_booking_confirmation_receiver', 'enable_2fa', 'enable_exchange_rate_conversion', 'agent_can_book_foreigners', 'parcel_receive_flow_enabled', 'contract_cargo_enabled']))
                                             <div class="flex items-center justify-end">
                                                 <label class="relative inline-flex items-center cursor-pointer">
                                                     <input type="hidden" name="settings[{{ $setting->key_name }}]" value="0">

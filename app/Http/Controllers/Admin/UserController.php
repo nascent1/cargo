@@ -6,10 +6,12 @@ use App\Http\Controllers\Concerns\SubmitsDualControl;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Station;
 use App\Models\AuditLog;
 use App\Services\DualControlService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -24,7 +26,7 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        $users = User::with('roles')
+        $users = User::with(['roles', 'station'])
             ->visibleToAdmin()
             ->when($request->search, fn($q, $s) => $q->where('email', 'like', "%$s%")->orWhere('first_name', 'like', "%$s%")->orWhere('last_name', 'like', "%$s%"))
             ->when($request->domain, fn($q, $d) => $q->where('domain', $d))
@@ -38,15 +40,28 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load(['roles.permissions', 'systemUser']);
+        $user->load(['roles.permissions', 'systemUser', 'station']);
         $allRoles = Role::all();
-        return view('admin.users.show', compact('user', 'allRoles'));
+        $stations = $this->dutyStations($user->station_id);
+        return view('admin.users.show', compact('user', 'allRoles', 'stations'));
     }
 
     public function create()
     {
         $roles = Role::all();
-        return view('admin.users.create', compact('roles'));
+        $stations = $this->dutyStations();
+        return view('admin.users.create', compact('roles', 'stations'));
+    }
+
+    /**
+     * Stations a user can be posted to: the active ones, plus the user's current one if it has since been suspended.
+     */
+    private function dutyStations(?int $current = null)
+    {
+        return Station::where('status', 'active')
+            ->when($current, fn ($q) => $q->orWhere('id', $current))
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'status']);
     }
 
     public function store(Request $request)
@@ -57,12 +72,21 @@ class UserController extends Controller
             'email'       => 'required|email|unique:users,email',
             'phone'       => 'nullable|string|max:20|unique:users,phone',
             'domain'      => 'required|in:system_user,agent,associate_agent,passenger',
+            'station_id'  => ['nullable', 'integer', Rule::exists('stations', 'id')->where('status', 'active')->whereNull('deleted_at')],
             'roles'       => 'nullable|array',
             'roles.*'     => 'exists:roles,id',
             'employee_id' => 'nullable|string|max:50',
             'department'  => 'nullable|string|max:100',
             'position'    => 'nullable|string|max:100',
         ]);
+
+        // The checker reads a station's name, not its number ("duty_station" is display only; it is not a user field)
+        if (!empty($validated['station_id'])) {
+            $validated['station_id'] = (int) $validated['station_id'];
+            $validated['duty_station'] = Station::find($validated['station_id'])?->label;
+        } else {
+            unset($validated['station_id']);
+        }
 
         // Passwords will be generated asynchronously by DualControlService::executeApproval
         // to prevent them from being scrubbed out of the JSON payloads.
@@ -85,6 +109,34 @@ class UserController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'User status update submitted for authorization.');
+    }
+
+    /**
+     * Duty station: where the staff member works. Through dual control (user_update).
+     */
+    public function updateStation(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'station_id' => ['nullable', 'integer', Rule::exists('stations', 'id')->where('status', 'active')->whereNull('deleted_at')],
+        ], [
+            'station_id.exists' => 'Choose an active station.',
+        ]);
+
+        $stationId = isset($validated['station_id']) ? (int) $validated['station_id'] : null;
+
+        if ($stationId === $user->station_id) {
+            return redirect()->back()->with('success', 'The duty station is unchanged.');
+        }
+
+        $station = $stationId ? Station::find($stationId) : null;
+
+        // "duty_station" is display only, so the checker reads a name; station_id is what is saved
+        return $this->submitChange($request, 'user_update', 'user', $user->id, [
+            'before' => ['station_id' => $user->station_id, 'duty_station' => $user->station?->label],
+            'after' => ['station_id' => $stationId, 'duty_station' => $station?->label],
+        ], $station
+            ? "{$user->full_name}'s duty station is now {$station->label}."
+            : "{$user->full_name} no longer has a duty station.");
     }
 
     public function updateRoles(Request $request, User $user)

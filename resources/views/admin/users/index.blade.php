@@ -40,6 +40,7 @@
                     <th class="px-6 py-3.5 text-left text-xs font-semibold text-surface-600 uppercase tracking-wider">User</th>
                     <th class="px-6 py-3.5 text-left text-xs font-semibold text-surface-600 uppercase tracking-wider">Domain</th>
                     <th class="px-6 py-3.5 text-left text-xs font-semibold text-surface-600 uppercase tracking-wider">Roles</th>
+                    <th class="px-6 py-3.5 text-left text-xs font-semibold text-surface-600 uppercase tracking-wider">Duty Station</th>
                     <th class="px-6 py-3.5 text-left text-xs font-semibold text-surface-600 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3.5 text-left text-xs font-semibold text-surface-600 uppercase tracking-wider">Created</th>
                     <th class="relative px-6 py-3.5"><span class="sr-only">Actions</span></th>
@@ -61,6 +62,15 @@
                     </td>
                     <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-medium bg-surface-100 text-surface-700">{{ ucfirst(str_replace('_', ' ', $user->domain)) }}</span></td>
                     <td class="px-6 py-4"><div class="flex gap-1">@foreach($user->roles as $role)<span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">{{ $role->display_name }}</span>@endforeach</div></td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        @if($user->station)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-100" title="{{ $user->station->name }}">
+                                <i class="fas fa-location-dot text-[10px]"></i> {{ $user->station->code }}
+                            </span>
+                        @else
+                            <span class="text-xs text-surface-400">Not set</span>
+                        @endif
+                    </td>
                     <td class="px-6 py-4">
                         <span class="px-2.5 py-1 rounded-full text-xs font-medium {{ match($user->status) { 'active' => 'bg-emerald-100 text-emerald-700', 'locked' => 'bg-red-100 text-red-700', 'suspended' => 'bg-amber-100 text-amber-700', default => 'bg-surface-100 text-surface-600' } }}">{{ ucfirst($user->status) }}</span>
                     </td>
@@ -75,7 +85,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-6 py-12 text-center text-surface-400">No users found.</td></tr>
+                <tr><td colspan="7" class="px-6 py-12 text-center text-surface-400">No users found.</td></tr>
                 @endforelse
             </tbody>
         </table>
